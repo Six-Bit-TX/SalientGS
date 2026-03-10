@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools >= 75.8.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "salientgs"
+version = "0.1.0"
+description = "Fast and accurate SfM reconstruction with GPU acceleration"
+readme = "README.md"
+license = "CC-BY-NC-4.0"
+requires-python = ">=3.10.0"
+classifiers = [
+    "Programming Language :: Python",
+]
+
+dependencies = [
+    "numpy==1.26.4",
+    "opencv-python==4.10.0.84",
+    "pyyaml",
+    "matplotlib",
+    "tqdm",
+    "gsplat",
+]
+
+[project.scripts]
+sgs-feat = "global_corr.global_matching:main"
+sgs-sfm = "salientgs.scripts.sfm:entrypoint"
+sgs-joint = "salientgs.scripts.joint:entrypoint"
+
+[tool.setuptools.packages.find]
+include = ["salientgs*", "global_corr*"]
