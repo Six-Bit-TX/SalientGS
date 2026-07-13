@@ -65,12 +65,12 @@ def similarity_from_cameras(c2w, strict_scaling=False, center_method="focus"):
 
 def align_principle_axes(point_cloud, filter_outliers=True, outlier_mad_threshold=10.0):
     """Align point cloud to principal axes.
-    
+
     Args:
         point_cloud: Nx3 array of points
         filter_outliers: If True, filter extreme outliers using MAD. Default True.
         outlier_mad_threshold: Points beyond median + threshold*MAD are filtered. Default 10.0.
-    
+
     Returns:
         4x4 transformation matrix
     """
@@ -80,7 +80,7 @@ def align_principle_axes(point_cloud, filter_outliers=True, outlier_mad_threshol
         num_invalid = np.sum(~valid_mask)
         print(f"Warning: Filtering out {num_invalid} points with NaN/Inf coordinates.")
         point_cloud = point_cloud[valid_mask]
-    
+
     if len(point_cloud) < 3:
         print("Warning: Too few valid points for PCA. Using identity transform.")
         return np.eye(4)
@@ -93,7 +93,7 @@ def align_principle_axes(point_cloud, filter_outliers=True, outlier_mad_threshol
         distances = np.linalg.norm(point_cloud - centroid, axis=1)
         median_dist = np.median(distances)
         mad = np.median(np.abs(distances - median_dist))  # median absolute deviation
-        
+
         # Filter points that are more than threshold MAD from the median distance
         if mad > 1e-8:  # avoid division by zero
             outlier_threshold = median_dist + outlier_mad_threshold * mad
@@ -104,7 +104,7 @@ def align_principle_axes(point_cloud, filter_outliers=True, outlier_mad_threshol
                 point_cloud = point_cloud[inlier_mask]
                 # Recompute centroid after filtering outliers
                 centroid = np.median(point_cloud, axis=0)
-    
+
     if len(point_cloud) < 3:
         print("Warning: Too few valid points after outlier filtering. Using identity transform.")
         transform = np.eye(4)

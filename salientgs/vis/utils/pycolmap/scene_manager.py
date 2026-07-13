@@ -94,7 +94,7 @@ class SceneManager:
                     self._load_cameras_txt(input_file)
                 else:
                     raise IOError('no cameras file found')
-    
+
     def _load_cameras_bin(self, input_file):
         self.cameras = OrderedDict()
 
@@ -307,7 +307,7 @@ class SceneManager:
             self._save_cameras_bin(output_file)
         else:
             self._save_cameras_txt(output_file)
-    
+
     def _save_cameras_bin(self, output_file):
         with open(output_file, 'wb') as fid:
             fid.write(struct.pack('L', len(self.cameras)))
@@ -497,7 +497,7 @@ class SceneManager:
             idx for idx in self.point3D_id_to_point3D_idx.values()
             if idx != SceneManager.INVALID_POINT3D]
         result = [self.points3D[point3D_idxs,:]]
-        
+
         if return_colors:
             result += [self.point3D_colors[point3D_idxs,:]]
 
@@ -618,7 +618,7 @@ class SceneManager:
 
             if image_set or min_track_len > 0:
                 image_ids = set(self.point3D_id_to_images[point3D_id][:,0])
-            
+
             # check if error and min track length are sufficient, or if none of
             # the selected cameras see the point
             if (len(image_ids) < min_track_len or

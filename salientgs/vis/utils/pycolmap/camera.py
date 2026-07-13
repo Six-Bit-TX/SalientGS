@@ -265,7 +265,7 @@ class Camera:
             xu = root(objective, x).x.reshape(*x.shape)
         else:
             xu = x
-            
+
         if denormalize:
             xu *= np.array([[self.fx, self.fy]])
             xu += np.array([[self.cx, self.cy]])

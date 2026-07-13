@@ -38,6 +38,7 @@ class Parser:
         image_folder_name: str = "images",
         min_num_points: int = 0,
         filter_outliers: bool = True,
+        crop_undistorted_images: bool = True,
     ):
         self.data_dir = data_dir
         self.factor = factor
@@ -46,6 +47,7 @@ class Parser:
         self.image_folder_name = image_folder_name
         self.min_num_points = min_num_points
         self.filter_outliers = filter_outliers
+        self.crop_undistorted_images = crop_undistorted_images
 
         colmap_dir = os.path.join(data_dir, "sparse/0/")
         if not os.path.exists(colmap_dir):
@@ -64,6 +66,7 @@ class Parser:
         w2c_mats = []
         camera_ids = []
         Ks_dict = dict()
+        camtype_dict = dict()
         params_dict = dict()
         imsize_dict = dict()  # width, height
         mask_dict = dict()
@@ -111,6 +114,7 @@ class Parser:
             ), f"Only perspective and fisheye cameras are supported, got {type_}"
 
             params_dict[camera_id] = params
+            camtype_dict[camera_id] = camtype
             imsize_dict[camera_id] = (cam.width // factor, cam.height // factor)
             mask_dict[camera_id] = None
         print(
@@ -183,11 +187,11 @@ class Parser:
             valid_mask = (image.point3D_ids != SceneManager.INVALID_POINT3D)
             p3d_ids = image.point3D_ids[valid_mask]
             p2d = image.points2D[valid_mask]
-            
+
             p3d_idxs = []
             for pid in p3d_ids:
                 p3d_idxs.append(manager.point3D_id_to_point3D_idx[pid])
-            
+
             point_indices[image_name] = np.array(p3d_idxs).astype(np.int32)
             point_2d_coords[image_name] = p2d.astype(np.float32) / factor
 
@@ -197,14 +201,14 @@ class Parser:
         if not np.all(registered_mask):
             num_unregistered = np.sum(~registered_mask)
             print(f"[Parser] Filtering out {num_unregistered} images with <= {self.min_num_points} 3D point correspondences.")
-            
+
             # Filter all image-related arrays
             valid_indices = np.where(registered_mask)[0]
             image_names = [image_names[i] for i in valid_indices]
             camtoworlds = camtoworlds[valid_indices]
             camera_ids = [camera_ids[i] for i in valid_indices]
             image_paths = [os.path.join(image_dir, f) for f in image_names]
-            
+
             # Filter point_indices and point_2d_coords (only keep registered images)
             point_indices = {name: point_indices[name] for name in image_names}
             point_2d_coords = {name: point_2d_coords[name] for name in image_names}
@@ -228,6 +232,9 @@ class Parser:
         self.camtoworlds = camtoworlds  # np.ndarray, (num_images, 4, 4)
         self.camera_ids = camera_ids  # List[int], (num_images,)
         self.Ks_dict = Ks_dict  # Dict of camera_id -> K
+        self.Ks_dist_dict = {}  # Dict of camera_id -> scaled distorted K
+        self.Ks_undist_full_dict = {}  # Dict of camera_id -> undistorted K before ROI crop
+        self.camtype_dict = camtype_dict  # Dict of camera_id -> camera model family
         self.params_dict = params_dict  # Dict of camera_id -> params
         self.imsize_dict = imsize_dict  # Dict of camera_id -> (width, height)
         self.mask_dict = mask_dict  # Dict of camera_id -> mask
@@ -248,6 +255,7 @@ class Parser:
             K[0, :] *= s_width
             K[1, :] *= s_height
             self.Ks_dict[camera_id] = K
+            self.Ks_dist_dict[camera_id] = K.copy()
             width, height = self.imsize_dict[camera_id]
             self.imsize_dict[camera_id] = (int(width * s_width), int(height * s_height))
 
@@ -263,16 +271,25 @@ class Parser:
             assert (
                 camera_id in self.params_dict
             ), f"Missing params for camera {camera_id}"
-            K = self.Ks_dict[camera_id]
+            K = self.Ks_dist_dict[camera_id]
             width, height = self.imsize_dict[camera_id]
+            camtype = self.camtype_dict[camera_id]
 
             if camtype == "perspective":
-                K_undist, roi_undist = cv2.getOptimalNewCameraMatrix(
+                K_undist_full, roi_undist = cv2.getOptimalNewCameraMatrix(
                     K, params, (width, height), 0
                 )
                 mapx, mapy = cv2.initUndistortRectifyMap(
-                    K, params, None, K_undist, (width, height), cv2.CV_32FC1
+                    K, params, None, K_undist_full, (width, height), cv2.CV_32FC1
                 )
+                if self.crop_undistorted_images:
+                    x_roi, y_roi, _, _ = roi_undist
+                    K_undist = K_undist_full.copy()
+                    K_undist[0, 2] -= x_roi
+                    K_undist[1, 2] -= y_roi
+                else:
+                    roi_undist = [0, 0, width, height]
+                    K_undist = K_undist_full.copy()
                 mask = None
             elif camtype == "fisheye":
                 fx = K[0, 0]
@@ -309,12 +326,14 @@ class Parser:
                 K_undist = K.copy()
                 K_undist[0, 2] -= x_min
                 K_undist[1, 2] -= y_min
+                K_undist_full = K.copy()
                 roi_undist = [x_min, y_min, x_max - x_min, y_max - y_min]
             else:
                 assert_never(camtype)
 
             self.mapx_dict[camera_id] = mapx
             self.mapy_dict[camera_id] = mapy
+            self.Ks_undist_full_dict[camera_id] = K_undist_full
             self.Ks_dict[camera_id] = K_undist
             self.roi_undist_dict[camera_id] = roi_undist
             self.imsize_dict[camera_id] = (roi_undist[2], roi_undist[3])
@@ -395,7 +414,7 @@ class Dataset:
             image_name = self.parser.image_names[index]
             point_indices = self.parser.point_indices[image_name]
             points_2d = self.parser.point_2d_coords[image_name]
-            
+
             if len(params) > 0 and len(points_2d) > 0:
                 # Undistort the 2D points if necessary
                 # This is tricky because we undistorted the image.
@@ -403,23 +422,33 @@ class Dataset:
                 # We should undistort them to match the undistorted image.
                 points_2d = points_2d.reshape(-1, 1, 2).astype(np.float64)
                 if self.parser.roi_undist_dict[camera_id] is not None:
-                    # We need to map distorted points to undistorted image.
-                    # Simple way: use cv2.undistortPoints
-                    points_2d = cv2.undistortPoints(
-                        points_2d,
-                        self.parser.Ks_dict[camera_id].astype(np.float64),
-                        params.astype(np.float64),
-                        None,
-                        self.parser.Ks_dict[camera_id].astype(np.float64),
-                    )
-                    x_roi, y_roi, _, _ = self.parser.roi_undist_dict[camera_id]
-                    points_2d[..., 0] -= x_roi
-                    points_2d[..., 1] -= y_roi
+                    # Map distorted COLMAP observations to the cropped
+                    # undistorted render image. The source K must be the
+                    # original distorted K, while the output P is the render K
+                    # after ROI principal-point adjustment.
+                    K_dist = self.parser.Ks_dist_dict[camera_id].astype(np.float64)
+                    K_render = self.parser.Ks_dict[camera_id].astype(np.float64)
+                    camtype = self.parser.camtype_dict[camera_id]
+                    if camtype == "fisheye":
+                        points_2d = cv2.fisheye.undistortPoints(
+                            points_2d,
+                            K_dist,
+                            params.astype(np.float64),
+                            P=K_render,
+                        )
+                    else:
+                        points_2d = cv2.undistortPoints(
+                            points_2d,
+                            K_dist,
+                            params.astype(np.float64),
+                            None,
+                            K_render,
+                        )
                 points_2d = points_2d.reshape(-1, 2).astype(np.float32)
 
             data["points"] = torch.from_numpy(points_2d).float()
             data["point_indices"] = torch.from_numpy(point_indices).long()
-            
+
             # also provide depths (for existing depth loss)
             worldtocams = np.linalg.inv(camtoworlds)
             points_world = self.parser.points[point_indices]

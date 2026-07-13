@@ -1,0 +1,619 @@
+%%
+%% ACM Multimedia 2026 Submission Template
+%% 
+%% Based on sample-sigconf.tex from the ACM Article Template.
+%% Prepared for ACM MM 2026 camera-ready submission.
+%%
+%% CAMERA-READY CHECKLIST:
+%% - Use \documentclass[sigconf]{acmart}
+%% - Ensure the paper is in double-column format
+%% - Include CCS Concepts and Keywords
+%% - Paper title must remain the same between submission and camera-ready
+%% - Author list must be finalized by the abstract submission deadline
+%% - If using generative AI tools, you must disclose their use in the paper
+%%
+%% For more information, see: https://2026.acmmm.org/
+%%
+
+%% ACM Multimedia 2026 camera-ready format (double-column):
+\documentclass[sigconf]{acmart}
+\usepackage{xspace}
+\newcommand{\eg}{e.g.\@\xspace}
+
+\usepackage{multirow}
+\usepackage{colortbl}
+\usepackage{booktabs}
+% The local validation environment lacks the ACM font bundle; disable
+% expansion only for that fallback. TAPS supplies the official fonts.
+\IfFileExists{libertine.sty}{}{\microtypesetup{expansion=false}}
+\graphicspath{{./}{samples/}}
+\definecolor{tabfirst}{rgb}{1, 0.6, 0.6} % red
+\definecolor{tabsecond}{rgb}{1, 0.8, 0.5} % orange
+\definecolor{tabthird}{rgb}{1, 1, 0.6} % yellow
+\definecolor{lightred}{rgb}{1, 0.6, 0.6}
+\definecolor{lightorange}{rgb}{1, 0.8, 0.5}
+\definecolor{lightyellow}{rgb}{1, 1, 0.6}
+
+%% Rights management information: copy the exact values from the ACM
+%% eRights confirmation email before submitting to TAPS.
+%%\setcopyright{acmlicensed}
+%%\copyrightyear{2026}
+%%\acmYear{2026}
+%%\acmDOI{XXXXXXX.XXXXXXX}
+
+%% ACM Multimedia 2026 Conference Information
+\acmConference[ACM MM '26]{ACM Multimedia 2026}{November 10--14, 2026}{Rio de Janeiro, Brazil }
+
+%%\acmSubmissionID{123-A56-BU3}
+
+\begin{document}
+\raggedbottom
+
+\title{SalientGS: Unified SfM-to-3DGS with Importance-Guided MCMC Gaussian Allocation}
+
+\author{Tianyu Xiong}
+\affiliation{%
+  \institution{School of Computer Science, Northwestern Polytechnical University}
+  \city{Xi'an}
+  \country{China}
+}
+\author{Rui Li}
+\affiliation{%
+  \institution{CEMSE, King Abdullah University of Science and Technology}
+  \city{Thuwal}
+  \country{Saudi Arabia}
+}
+
+\author{Suning Ge}
+\affiliation{%
+  \institution{School of Computer Science, Northwestern Polytechnical University}
+  \city{Xi'an}
+  \country{China}
+}
+
+\author{Jiaqi Yang}
+\affiliation{%
+  \institution{School of Computer Science, Northwestern Polytechnical University}
+  \city{Xi'an}
+  \country{China}
+}
+
+\renewcommand{\shortauthors}{T. Xiong et al.}
+
+\begin{abstract}
+Reconstructing 3D scenes from unordered images remains bottlenecked by expensive Structure-from-Motion (SfM) preprocessing and frozen pose interfaces. We present SalientGS, a unified SfM-to-3D Gaussian Splatting (3DGS) pipeline. Its central contribution is importance-guided Markov Chain Monte Carlo (MCMC) Gaussian allocation, which aggregates multi-view residuals into per-Gaussian underfit and redundancy signals. These signals define a smooth importance-weighted sampling distribution that biases both birth and relocation toward underfit regions. This reallocates capacity from well-fit areas without altering the underlying stochastic gradient Langevin dynamics (SGLD). SalientGS achieves end-to-end reconstruction in 15 minutes with state-of-the-art perceptual quality. The supplementary material provides dedicated sections for Per-Scene Qualitative Comparisons and Per-Image Learned Perceptual Image Patch Similarity (LPIPS) Analysis, including failure cases. Code and evaluation scripts are available at \url{https://github.com/Six-Bit-TX/SalientGS}.
+\end{abstract}
+
+%% CCS Concepts - Generate at: https://dl.acm.org/ccs/ccs.cfm
+\begin{CCSXML}
+<ccs2012>
+ <concept>
+  <concept_id>10010147.10010178</concept_id>
+  <concept_desc>Computing methodologies~Computer vision</concept_desc>
+  <concept_significance>500</concept_significance>
+ </concept>
+</ccs2012>
+\end{CCSXML}
+
+\ccsdesc[500]{Computing methodologies~Computer vision}
+
+\keywords{3D Gaussian Splatting, Structure from Motion, Joint Pose Optimization, Markov Chain Monte Carlo, Importance-Guided Allocation}
+
+\maketitle
+
+\begin{figure}[t]
+    \centering
+    \includegraphics[width=\columnwidth]{teaser_lpips_speed.pdf}
+    \caption{\textbf{Quality vs.\ Speed vs.\ Model Size on Mip-NeRF 360.} Bubble size indicates Gaussian count. SalientGS achieves the best perceptual quality (LPIPS $\downarrow$) with competitive speed using only 1.5M Gaussians---demonstrating that importance-guided MCMC allocation and joint pose optimization enable both fast reconstruction and state-of-the-art rendering quality without standalone COLMAP preprocessing.}
+    \label{fig:teaser}
+\end{figure}
+
+\begin{figure*}[t]
+    \centering
+    \includegraphics[width=\textwidth]{overview.pdf}
+    % \fbox{\parbox{0.95\textwidth}{\centering\vspace{3cm}\textbf{Pipeline Figure Placeholder}\\[0.5em]
+    % Fisher Vector + MST $\rightarrow$ First-Order SfM $\rightarrow$ Importance-Guided MCMC 3DGS with Joint Pose Optimization\vspace{3cm}}}
+    \caption{Starting from an unordered image set, we first retrieve candidate pairs with Fisher Vector descriptors and enforce global connectivity with a maximum spanning tree to build a sparse but reliable matching graph. We then run a first-order SfM stage to estimate initial camera poses and triangulate a coarse 3D structure, followed by joint optimization of the 3D Gaussian representation and camera parameters under photometric and reprojection-based BA losses. This unified pipeline concentrates model capacity on salient scene regions while preserving geometric anchoring throughout optimization. Red marks indicate the main novel components of our method.}
+    \label{fig:pipeline}
+\end{figure*}
+
+%% =============================================================================
+%% INTRODUCTION
+%% =============================================================================
+\section{Introduction}
+\label{sec:introduction}
+
+Reconstructing high-fidelity 3D scenes from unordered image collections is a fundamental problem in computer vision and graphics, with applications spanning virtual reality, robotics, and cultural heritage preservation. The recent advent of 3D Gaussian Splatting (3DGS)~\cite{kerbl3Dgaussians} has transformed this landscape, enabling real-time novel view synthesis with quality rivaling Neural Radiance Fields (NeRF)~\cite{mildenhall2021nerf} while dramatically reducing rendering time. However, 3DGS inherits a critical dependency from the NeRF paradigm: it requires accurate camera poses and sparse point clouds from Structure-from-Motion (SfM) preprocessing, most commonly performed with COLMAP~\cite{colmap}.
+
+In widely used COLMAP-based two-stage pipelines, this preprocessing step can become a practical bottleneck for end-to-end reconstruction. Exhaustive image matching and second-order bundle adjustment can be expensive, especially for large image collections, and their cost can rival or exceed 3DGS training time itself (Table~\ref{tab:main-result}). More importantly, the interface is typically frozen: SfM pose errors propagate downstream without photometric correction, and the separation between stages limits joint optimization of geometry and appearance.
+
+Recent efforts to accelerate 3DGS training~\cite{mallick2024taming,chen2025dashgaussian,fang2024mini,ren2025fastgs} have achieved impressive speedups through improved densification strategies, progressive training, and efficient Gaussian management. However, these methods still rely on standalone COLMAP preprocessing, meaning their reported times understate the true end-to-end cost. Meanwhile, COLMAP-free approaches~\cite{fu2024colmap,ji2025sfm,huang20253r} have emerged, but many assume sequential input, use feed-forward networks that can be sensitive to domain shift, or omit geometric constraints during training, leading to pose drift in challenging scenarios.
+
+We present \textbf{SalientGS}, a unified SfM-to-3DGS pipeline that achieves both fast reconstruction and state-of-the-art rendering quality. Our primary algorithmic contribution is \emph{importance-guided MCMC Gaussian allocation}. We compute multi-view underfit (importance) and well-fit (redundancy) signals, then convert them into an importance-weighted sampling distribution. This distribution biases \textbf{both} birth and relocation within the MCMC framework, reallocating a fixed Gaussian budget from redundant regions to persistent errors. Crucially, this importance guidance operates as a heuristic allocation strategy layered on top of the SGLD-based population dynamics of 3DGS-MCMC~\cite{mcmc3dgs}; it does not alter the underlying Langevin updates and therefore makes no additional convergence claims beyond those of the base framework. Our key insight is that \emph{importance-guided capacity reallocation} makes a fast but coarse SfM initialization viable when it is coupled with joint refinement of pose and appearance and with geometric anchoring.
+
+Unlike prior joint optimization methods that rely primarily on photometric gradients, SalientGS maintains explicit geometric constraints through a reprojection-based bundle adjustment (BA) loss on triangulated feature tracks, enabling accurate pose refinement while preventing degenerate solutions.
+Our contributions:
+{\setlength{\topsep}{2pt}
+\setlength{\itemsep}{2pt}
+\setlength{\parsep}{0pt}
+\setlength{\partopsep}{0pt}
+\begin{itemize}
+    \item \textbf{Importance-guided MCMC Gaussian allocation:}\newline A heuristic allocation layer atop 3DGS-MCMC~\cite{mcmc3dgs} that biases both birth and relocation toward underfit regions via multi-view error attribution, yielding +0.17~dB improvement in peak signal-to-noise ratio (PSNR) and a 12\% LPIPS improvement over vanilla MCMC at 1.5M Gaussians (Table~\ref{tab:ablation}).
+    \item \textbf{Unified SfM-to-3DGS pipeline:} An end-to-end architecture coupling fast SfM initialization with joint refinement of pose and appearance under photometric and reprojection losses.
+    \item \textbf{Efficient matching and first-order SfM:} Fisher Vector (FV) retrieval with Maximum Spanning Tree (MST) connectivity and first-order epipolar adjustment, achieving near-linear scaling and up to 23$\times$ SfM speedup.
+    \item \textbf{State-of-the-art results:} Best LPIPS across all datasets with end-to-end reconstruction in 15 minutes without standalone COLMAP preprocessing.
+\end{itemize}
+}
+%% =============================================================================
+%% PROBLEM DESCRIPTION AND METHODOLOGY
+%% =============================================================================
+
+%% =============================================================================
+%% RELATED WORK
+%% =============================================================================
+\section{Related Work}
+\label{sec:related_work}
+
+\subsection{Novel View Synthesis and 3D Gaussian Splatting}
+
+NeRF~\cite{mildenhall2021nerf} represents scenes as continuous volumetric functions, with improvements in anti-aliasing~\cite{barron2021mip,barron2022mip} and training speed~\cite{muller2022instant}. 3DGS~\cite{kerbl3Dgaussians} enables real-time rendering via anisotropic Gaussians but is sensitive to initialization quality. Recent acceleration efforts include importance-based budgeting~\cite{mallick2024taming}, progressive reconstruction~\cite{chen2025dashgaussian}, pruning~\cite{fang2024mini,hanson2025speedy}, and MCMC-based management~\cite{mcmc3dgs} with SGLD-driven birth-death processes. FastGS~\cite{ren2025fastgs} combines many of these innovations. We adopt the MCMC framework and layer \emph{importance-guided} birth and relocation on top, biasing allocation via multi-view error attribution without modifying the underlying SGLD dynamics.
+
+\subsection{Structure from Motion}
+
+Incremental SfM pipelines such as COLMAP~\cite{colmap} are widely used and robust, but they can accumulate drift and often rely on computationally heavy matching and second-order BA. Global SfM methods~\cite{moulon2017openmvg,sweeney2015theia} solve all poses simultaneously via rotation~\cite{hartley2013rotation,wilson2020distribution} and translation averaging~\cite{govindu2001combining,martinec2007robust}; GLOMAP~\cite{pan2024glomap} achieves COLMAP-level accuracy with significant speedups. FastMap~\cite{fastmap} replaces second-order BA with first-order structureless epipolar adjustment, achieving BA-quality refinement with cost independent of point count. Learning-based approaches include differentiable SfM~\cite{wang2024vggsfm}, flow-based optimization~\cite{smith2024flowmap}, and the DUSt3R/MASt3R/VGGT paradigm~\cite{wang2024dust3r,leroy2024grounding,wang2025vggt}. We integrate first-order SfM with joint 3DGS training, retaining an optimization-based geometric backbone while avoiding feed-forward domain sensitivity.
+
+\subsection{Image Matching and Retrieval}
+
+Exhaustive pairwise matching scales as $O(N^2)$. Retrieval-based pair selection addresses this via image-level descriptors such as Fisher Vectors~\cite{perronnin2010fisher}, Bag-of-Words~\cite{sivic2003video,jegou2010aggregating}, and learned methods like NetVLAD~\cite{arandjelovic2016netvlad} and MegaLoc~\cite{megaloc}. We adopt Fisher Vector retrieval with MST-based connectivity guarantees to achieve near-linear matching complexity without requiring pretrained networks.
+
+\subsection{Joint Pose and Appearance Optimization}
+
+Traditional pipelines treat SfM and novel view synthesis as independent modules with frozen interfaces. NeRF--~\cite{wang2021nerfmm} and BARF~\cite{lin2021barf} optimize poses via photometric gradients; SPARF~\cite{truong2023sparf} adds multi-view correspondences but lacks explicit geometric constraints. COLMAP-free 3DGS methods have also emerged: CF-3DGS~\cite{fu2024colmap} and HT-3DGS~\cite{ji2025sfm} assume sequential input, 3RGS~\cite{huang20253r} relies on photometric-only refinement, and GloSplat~\cite{glosplat} preserves SfM feature tracks for geometric anchoring. Unlike these methods, we maintain geometric constraints through a reprojection-based BA loss on triangulated tracks within a unified end-to-end pipeline.
+
+
+%% =============================================================================
+%% PROBLEM DESCRIPTION AND METHODOLOGY
+%% =============================================================================
+\section{Problem Description and Methodology}
+\label{sec:methodology}
+
+Given $N$ unordered images depicting a scene, we simultaneously reconstruct a 3DGS representation and recover camera poses through three stages (Figure~\ref{fig:pipeline}): global matching, first-order SfM, and joint 3DGS training with importance-guided MCMC allocation.
+
+\subsection{Global Correspondence with Fisher Vector \& MST}
+\label{sec:global_matching}
+
+Traditional exhaustive image matching scales as $O(N^2)$, becoming prohibitive for large image collections. We address this through a retrieval-based approach that identifies visually similar image pairs using Fisher Vector (FV) global descriptors, followed by Maximum Spanning Tree (MST) connectivity guarantees. Figure~\ref{fig:fisher_mst} illustrates our retrieval and pair selection pipeline.
+
+\begin{figure}[t]
+    \centering
+    \includegraphics[width=\columnwidth]{Fisher_MST.pdf}
+    \caption{Given an unordered image collection, we extract Scale-Invariant Feature Transform (SIFT) features, encode them into Fisher Vectors, retrieve top-$k$ candidate neighbors, add MST edges, and verify pairs with RANSAC. This produces a sparse but well-connected matching graph that balances reconstruction quality and efficiency.}
+    \label{fig:fisher_mst}
+\end{figure}
+
+\paragraph{Fisher Vector Encoding}
+For each image $I_i$, we extract Scale-Invariant Feature Transform (SIFT) descriptors and encode them into a Fisher Vector $\mathbf{f}_i$~\cite{perronnin2010fisher} by computing gradients of the descriptor log-likelihood with respect to an $M$-component Gaussian Mixture Model (GMM) trained on the image collection. The resulting vectors are L2- and signed-square-root normalized for retrieval.
+
+\paragraph{Pair Selection with MST Connectivity}
+We retrieve the top-$k$ most similar images per query via FAISS~\cite{faiss} approximate nearest-neighbor (ANN) search in $O(N \log N)$ time, producing a sparse $k$NN graph. To guarantee connectivity for global SfM, we add Maximum Spanning Tree edges from this sparse graph, then apply RANSAC-based geometric verification to filter spurious matches. The final pair set is $\mathcal{P} = \mathcal{P}_{\text{top-}k} \cup \mathcal{P}_{\text{MST}} \cup \mathcal{P}_{\text{extra}}$.
+
+\subsection{First-Order SfM Optimization}
+\label{sec:fastmap}
+
+Following FastMap~\cite{fastmap}, we adopt a first-order SfM approach whose per-step cost is independent of 3D point count. Camera intrinsics are estimated via hierarchical interval search using a one-parameter division distortion model; focal length is recovered by maximizing the singular value ratio of the essential matrix. Global rotations are solved by minimizing geodesic distances on SO(3) using a continuous 6D parameterization, and translations are recovered via direction-only consistency with multiple random initializations.
+
+\paragraph{Epipolar Adjustment}
+The key step is structureless pose refinement using precomputed quadratic forms $W_n \in \mathbb{R}^{9 \times 9}$ from epipolar constraints:
+\begin{equation}
+    \mathcal{L}_e = \frac{2}{Z} \sum_{n=1}^{|\mathcal{P}|} \mathbf{e}_n^\top W_n \mathbf{e}_n,
+\end{equation}
+where $\mathbf{e}_n = \text{vec}(E_n)$ and $Z$ is a normalization constant. This enables BA-quality refinement with cost independent of point count, implemented with fused CUDA kernels.
+
+\subsection{Importance-Guided MCMC Gaussian Allocation}
+\label{sec:importance_guided}
+
+\begin{figure}[t]
+    \centering
+    \includegraphics[width=\columnwidth]{Importance_MCMC.pdf}
+    \caption{We aggregate multi-view reconstruction errors into per-Gaussian importance and redundancy scores, then use the resulting importance-weighted distribution for both \textbf{relocation} and \textbf{birth}. This reallocates model capacity toward persistently underfit regions while preserving the underlying MCMC population-management framework.}
+    \label{fig:importance_mcmc}
+\end{figure}
+
+We adopt an MCMC-based approach to Gaussian population management (Figure~\ref{fig:importance_mcmc}), which differs fundamentally from standard 3DGS adaptive density control (ADC). While ADC uses gradient-based clone/split operations for densification and opacity thresholding for pruning, MCMC-based methods maintain a fixed or slowly-growing Gaussian budget through two operations: \textbf{relocation} (teleporting low-value Gaussians to new positions) and \textbf{birth} (adding new Gaussians by sampling from existing ones). We extend this framework with importance and redundancy scores derived from multi-view reconstruction error, and use them to define a smooth, importance-weighted sampling distribution that biases both operations toward underfit regions.
+
+\paragraph{Multi-view Error Attribution}
+Periodically during training, we sample $K$ views and compute per-pixel L1 error maps:
+\begin{equation}
+    e^j_{u,v} = \frac{1}{D} \sum_{d=1}^{D} |r^{j,d}_{u,v} - g^{j,d}_{u,v}|,
+\end{equation}
+where $r^j$ and $g^j$ are rendered and ground-truth images for view $j$, and $D{=}3$ is the RGB channel dimension. To make the signal robust across views and training stages, we avoid per-view min-max (which can make ``high-error'' non-selective late in training) and instead use \emph{robust quantile normalization}:
+\begin{equation}
+    \mathcal{M}^j = \mathrm{clip}\left(\frac{e^j - Q_{\ell}(e^j)}{Q_{h}(e^j)-Q_{\ell}(e^j)}, 0, 1\right),
+\end{equation}
+where $Q_{\ell}$ and $Q_{h}$ denote low/high quantiles (e.g., 5\% and 90\%). We then define per-view high/low thresholds by quantiles of $\mathcal{M}^j$:
+\begin{equation}
+    \tau^j_{\text{hi}} = Q_{q_{\text{hi}}}(\mathcal{M}^j), \quad \tau^j_{\text{lo}} = Q_{q_{\text{lo}}}(\mathcal{M}^j), \ \ (q_{\text{hi}} > q_{\text{lo}}).
+\end{equation}
+
+\paragraph{Importance Score (Underfit Attribution)}
+For each Gaussian $\mathcal{G}_i$ with 2D footprint $\Omega_i^j$ in view $j$, we define a normalized underfit weight:
+\begin{equation}
+    \phi^j_{\text{hi}}(p)= \frac{\max(0, \mathcal{M}^j(p) - \tau^j_{\text{hi}})}{1 - \tau^j_{\text{hi}}}.
+\end{equation}
+We aggregate over the footprint and normalize by footprint size to reduce bias toward large projected Gaussians:
+\begin{equation}
+    s^i_{\text{imp}} = \frac{100}{K} \sum_{j=1}^{K} \frac{1}{|\Omega_i^j|} \sum_{p \in \Omega_i^j} \phi^j_{\text{hi}}(p).
+\end{equation}
+We report $s^i_{\text{imp}}$ on a 0--100 scale (percentage-like), so $\tau_{\text{imp}}$ is interpretable as the amount of persistent underfit mass required to prioritize a Gaussian. In practice, we estimate $|\Omega_i^j|$ using the projected radii from the renderer (cheap), rather than explicitly enumerating all pixels in $\Omega_i^j$.
+
+\paragraph{Redundancy Score (Well-fit Attribution)}
+We measure well-fit coverage analogously using a normalized low-error weight:
+\begin{equation}
+    \phi^j_{\text{lo}}(p)= \frac{\max(0, \tau^j_{\text{lo}} - \mathcal{M}^j(p))}{\tau^j_{\text{lo}}}.
+\end{equation}
+\begin{equation}
+    s^i_{\text{red}} = \frac{1}{K} \sum_{j=1}^{K} \frac{1}{|\Omega_i^j|} \sum_{p \in \Omega_i^j} \phi^j_{\text{lo}}(p).
+\end{equation}
+We min-max normalize $s^i_{\text{red}}$ to $[0,1]$ for thresholding. Gaussians with high $s^i_{\text{red}}$ are redundant from a multi-view perspective---they occupy capacity in already well-reconstructed regions.
+
+\paragraph{Importance-Weighted Sampling Distribution}
+We convert importance into a smooth sampling weight:
+\begin{equation}
+    \tilde{w}_i = \mathrm{softplus}\left(\frac{s^i_{\text{imp}} - \tau_{\text{imp}}}{\tau_{\text{imp}}}\right), \quad
+    w_i \propto \left((1-\lambda_{\text{mix}})\,\sigma(o_i) + \lambda_{\text{mix}}\right)\tilde{w}_i,
+\end{equation}
+where we normalize $\tilde{w}_i$ to have unit mean. The opacity mixing term $\lambda_{\text{mix}}$ prevents under-sampling Gaussians that are underfit but initially low-opacity (weak coverage), improving exploration beyond ``refine only already-visible'' regions. This replaces hard thresholding with a differentiable, scale-free weighting around $\tau_{\text{imp}}$.
+
+\paragraph{Importance-Guided MCMC Strategy}
+Our strategy extends the MCMC framework with an importance-weighted sampling distribution shared by both birth and relocation:
+\begin{itemize}
+    \item \textbf{Relocation}: Gaussians with low opacity ($< \epsilon$) or high redundancy score ($s^i_{\text{red}} > \tau_{\text{red}}$) are reassigned by resampling targets from $w_i$, recycling capacity from well-fit regions to underfit regions.
+    \item \textbf{Birth}: New Gaussians are spawned by sampling parents from $w_i$, allocating new capacity to consistently underfit regions without hard thresholding.
+\end{itemize}
+Unlike standard ADC which can lead to unbounded Gaussian growth, this MCMC-based approach maintains controlled population while the importance guidance ensures capacity is directed toward multi-view consistent reconstruction.
+
+This importance guidance replaces the uniform opacity-weighted sampling of 3DGS-MCMC with $w_i$; it is a heuristic allocation strategy---not a Metropolis--Hastings proposal---that leaves the underlying SGLD parameter updates unchanged and makes no additional convergence claims. Empirically, it substantially improves sample efficiency under fixed budgets (Table~\ref{tab:budget}).
+
+\subsection{Joint Pose Optimization}
+\label{sec:pose_opt}
+
+While first-order SfM provides good initial poses, we jointly refine them during 3DGS training using both photometric and geometric losses.
+
+\paragraph{Photometric Loss}
+The primary supervision comes from image reconstruction:
+\begin{equation}
+    \mathcal{L}_{\text{photo}} = (1 - \lambda_s) \| \hat{I}(\mathbf{x}) - I(\mathbf{x}) \|_1 + \lambda_s (1 - \text{SSIM}(\hat{I}, I)),
+\end{equation}
+where $I$ and $\hat{I}$ are the ground-truth and rendered images, respectively, and SSIM denotes the Structural Similarity Index Measure. Camera poses $\{T_i\}$ are parameterized with learnable adjustments and optimized jointly with Gaussian parameters.
+
+\paragraph{Bundle Adjustment Loss}
+To anchor poses to geometric consistency, we incorporate a reprojection-based BA loss:
+\begin{equation}
+    \mathcal{L}_{\text{BA}} = \frac{1}{|\mathcal{O}|} \sum_{(i,j,k) \in \mathcal{O}} \| \pi(T_i, \mathbf{X}_k) - \mathbf{x}_{i,k} \|_2,
+\end{equation}
+where $\mathcal{O}$ denotes the set of 2D observations, $\mathbf{X}_k$ are triangulated 3D track points, $\pi$ is the projection function, and $\mathbf{x}_{i,k}$ is the observed 2D keypoint. The track points and their 2D associations are fixed at SfM initialization; only the camera poses and Gaussian parameters are optimized during joint training. This regularization prevents pose drift by maintaining consistency with sparse geometric constraints from SfM.
+
+\paragraph{Combined Objective}
+The total training loss combines all terms:
+\begin{equation}
+    \mathcal{L} = \mathcal{L}_{\text{photo}} + \lambda_{\text{BA}} \mathcal{L}_{\text{BA}} + \mathcal{L}_{\text{reg}},
+\end{equation}
+where $\mathcal{L}_{\text{reg}}$ includes standard 3DGS regularizers (scale, opacity). Camera 0 is fixed to resolve gauge ambiguity. This joint optimization allows the 3DGS representation and camera poses to co-evolve, leveraging photometric gradients for sub-pixel pose refinement while geometric constraints prevent degenerate solutions.
+
+
+
+%% =============================================================================
+%% EXPERIMENTAL EVALUATION
+%% =============================================================================
+\section{Experimental Evaluation}
+\label{sec:experiments}
+
+\begin{table*}[t!]
+    \centering
+    \footnotesize
+    \setlength\tabcolsep{1.5pt}
+    \caption{
+        \textbf{Quantitative comparisons.} Times include COLMAP preprocessing for prior methods. \colorbox{lightred}{\bf Best}, \colorbox{lightorange}{2nd}, \colorbox{lightyellow}{3rd}. Time in minutes.
+    }
+    \begin{tabular} {l | rrrrr | rrrrr | rrrrr}
+        \toprule
+        \multirow{2}{*}{Method} 
+        & \multicolumn{5}{c}{Mip-NeRF 360~\cite{barron2022mip}}  & \multicolumn{5}{c}{Deep Blending~\cite{hedman2018deep}} & \multicolumn{5}{c}{Tanks \& Temples~\cite{knapitsch2017tanks}} \\
+        \cmidrule(l{2pt}r{2pt}){2-6} \cmidrule(l{2pt}r{2pt}){7-11} \cmidrule(l{2pt}r{2pt}){12-16}
+         & Time$\downarrow$ & PSNR$\uparrow$ & SSIM$\uparrow$ & LPIPS$\downarrow$ & $\mathrm{N_{GS}}\downarrow$
+        & Time$\downarrow$ & PSNR$\uparrow$ & SSIM$\uparrow$ & LPIPS$\downarrow$ & $\mathrm{N_{GS}}\downarrow$
+        & Time$\downarrow$ & PSNR$\uparrow$ & SSIM$\uparrow$ & LPIPS$\downarrow$ & $\mathrm{N_{GS}}\downarrow$\\
+        \midrule
+        \multicolumn{16}{l}{\textit{w/o Pose Optimization}} \\
+        \midrule
+        3DGS~\cite{kerbl3Dgaussians}
+            & 31.93 & 27.53 & 0.812 & 0.221 & 2.63M
+            & 30.77 & 29.71 & 0.903 & \cellcolor{tabthird}0.241 & 2.46M 
+            & 22.34 & 23.71 & 0.850 & 0.170 & 1.57M\\
+        3DGS-MCMC~\cite{mcmc3dgs}
+            & 32.41 & \cellcolor{tabthird}28.01 & \cellcolor{tabthird}0.835 & 0.186 & 3.23M
+            & 31.25 & 29.78 & \cellcolor{tabsecond}0.912 & \cellcolor{tabsecond}0.237 & 2.95M 
+            & 22.89 & \cellcolor{tabsecond}24.40 & \cellcolor{tabsecond}0.869 & 0.149 & 1.85M\\
+        Mini-Splatting~\cite{fang2024mini}
+            & 28.69 & 27.32 & 0.821 & 0.217 & \cellcolor{tabsecond}0.53M
+            & 24.35 & \cellcolor{tabsecond}29.99 & \cellcolor{tabthird}0.907 & 0.244 & \cellcolor{tabthird}0.56M 
+            & 20.06 & 23.46 & 0.844 & 0.181 & \cellcolor{tabsecond}0.30M \\
+        Speedy-splat~\cite{hanson2025speedy}
+            & 24.38 & 26.91 & 0.781 & 0.295 & \cellcolor{tabfirst} \bf 0.30M
+            & 21.75 & 29.42 & 0.898 & 0.272 & \cellcolor{tabfirst} \bf 0.25M 
+            & 17.32 & 23.38 & 0.816 & 0.242 & \cellcolor{tabfirst} \bf 0.18M \\
+        Taming-3DGS~\cite{mallick2024taming}
+            & \cellcolor{tabthird}16.36 & 27.48 & 0.794 & 0.261 & \cellcolor{tabthird}0.68M 
+            & \cellcolor{tabsecond}14.06 & 29.50 & 0.894 & 0.278 & \cellcolor{tabsecond}0.29M
+            & \cellcolor{tabsecond}13.71 & 23.89 & 0.833 & 0.214 & \cellcolor{tabthird}0.32M \\
+        DashGaussian~\cite{chen2025dashgaussian}
+            & 17.35 & 27.73 & 0.817 & 0.218 & 2.40M
+            & 15.16 & 29.65 & 0.906 & 0.246 & 1.94M 
+            & \cellcolor{tabthird}15.28 & 24.00 & 0.853 & 0.178 & 1.21M \\
+        FastGS-big~\cite{ren2025fastgs}
+            & \cellcolor{tabfirst} \bf 14.58 & 27.93 & 0.820 & 0.216 & 1.15M 
+            & \cellcolor{tabfirst} \bf 13.00 & \cellcolor{tabfirst} \bf 30.12 & \cellcolor{tabthird}0.907 & 0.243 & 0.65M 
+            & \cellcolor{tabfirst} \bf 13.03 & \cellcolor{tabthird}24.39 & \cellcolor{tabthird}0.855 & 0.175 & 0.54M \\
+        \midrule
+        \multicolumn{16}{l}{\textit{w/ Pose Optimization}} \\
+        \midrule
+        GloSplat-A~\cite{glosplat}
+            & 22.00 & \cellcolor{tabsecond}28.86 & \cellcolor{tabfirst} \bf 0.862 & \cellcolor{tabsecond}0.139 & 3.00M
+            & 19.15 & 18.45$^*$ & 0.583$^*$ & 0.508$^*$ & 3.00M
+            & 24.87 & 22.15 & 0.805 & \cellcolor{tabthird}0.147 & 3.00M \\
+        VGGT-X~\cite{wang2025vggt}
+            & 73.71 & 26.49 & 0.782 & \cellcolor{tabthird}0.177 & 3.00M
+            & 57.24 & 18.25$^\dagger$ & 0.622$^\dagger$ & 0.545$^\dagger$ & 3.00M
+            & 61.12 & 23.05 & 0.818 & \cellcolor{tabsecond}0.138 & 3.00M \\
+        SalientGS (Ours)
+            & \cellcolor{tabsecond}15.39 & \cellcolor{tabfirst} \bf 28.89 & \cellcolor{tabsecond}0.857 & \cellcolor{tabfirst} \bf 0.131 & 1.50M 
+            & \cellcolor{tabthird}14.84 & \cellcolor{tabsecond}29.99 & \cellcolor{tabfirst} \bf 0.921 & \cellcolor{tabfirst} \bf 0.144 & 1.50M
+            & 15.71 & \cellcolor{tabfirst} \bf 24.87 & \cellcolor{tabfirst} \bf 0.879 & \cellcolor{tabfirst} \bf 0.084 & 1.50M \\
+        \bottomrule
+    \end{tabular}
+    \\[2pt]
+    {\scriptsize $^*$GloSplat-A and $^\dagger$VGGT-X consistently fail on the \textit{drjohnson} scene, significantly degrading their averaged Deep Blending metrics.}
+    \label{tab:main-result}
+\end{table*}
+
+\subsection{Implementation Details}
+\label{sec:impl_details}
+
+We evaluate on three standard benchmarks: Mip-NeRF 360~\cite{barron2022mip} (9 scenes), Deep Blending~\cite{hedman2018deep} (2 scenes), and Tanks \& Temples~\cite{knapitsch2017tanks} (2 scenes). We report PSNR, SSIM, LPIPS~\cite{zhang2018unreasonable}, total time (minutes), and Gaussian count $\mathrm{N_{GS}}$. All experiments use a single NVIDIA Pro 6000 GPU. For Fisher Vector encoding, we train a GMM with $M{=}64$ components on SIFT descriptors and retrieve the top-$k{=}20$ candidates per image. The Gaussian budget cap is set to $\mathrm{N_{GS}}{=}1.5$M. For importance-guided MCMC, we use robust normalization quantiles $(\ell,h){=}(0.05,0.90)$, high/low selection quantiles $(q_{\text{hi}},q_{\text{lo}}){=}(0.9,0.1)$, importance threshold $\tau_{\text{imp}}{=}5$ (on a 0--100 importance scale), redundancy threshold $\tau_{\text{red}}{=}0.9$, opacity mixing $\lambda_{\text{mix}}{=}0.05$, and $K{=}10$ views for score computation. Joint training runs for 30K iterations with $\lambda_{\text{BA}}{=}0.01$ and $\lambda_s{=}0.2$. Importance scores are first computed after a pose warmup of 3K iterations and recomputed every $T{=}500$ iterations thereafter. This schedule avoids using unstable residuals from the early pose-drift phase.
+
+\subsection{Main Results}
+\label{sec:main_results}
+
+Table~\ref{tab:main-result} compares SalientGS against seven methods that rely on COLMAP preprocessing (upper block) and two concurrent pose-optimizing methods, GloSplat-A~\cite{glosplat} and VGGT-X~\cite{wang2025vggt} (lower block). All reported times include COLMAP preprocessing for prior methods to reflect true end-to-end cost.
+
+\paragraph{Quality}
+SalientGS achieves the best LPIPS on all three benchmarks (0.131 / 0.144 / 0.084 on Mip-NeRF 360 / Deep Blending / Tanks \& Temples) and the highest PSNR on Mip-NeRF 360 (28.89~dB) and Tanks \& Temples (24.87~dB). Among pose-optimizing methods, GloSplat-A reaches competitive SSIM on Mip-NeRF 360 (0.862 vs.\ 0.857) but fails on Deep Blending's \textit{drjohnson} scene, as does VGGT-X; we attribute SalientGS's robustness to the geometric anchoring of our BA loss and importance-guided MCMC allocation. Compared with COLMAP-dependent methods, the closest perceptual competitor is 3DGS-MCMC (0.186 LPIPS on Mip-NeRF 360) at 3.23M Gaussians and 32.41~min; FastGS-big achieves 0.216 LPIPS---a 39\% gap from our 0.131.
+
+\paragraph{Efficiency and Model Size}
+SalientGS completes end-to-end reconstruction in approximately 15 minutes without standalone COLMAP preprocessing. On Mip-NeRF 360 it is the second-fastest method overall (15.39~min), trailing only FastGS-big (14.58~min) which uses frozen COLMAP poses. Among pose-optimizing methods, SalientGS is 1.4$\times$ faster than GloSplat-A and 4.8$\times$ faster than VGGT-X, while using a fixed budget of 1.5M Gaussians---half the 3.0M used by both competitors---yielding lower memory consumption and faster rendering.
+
+
+\subsection{Ablation Study}
+\label{sec:ablation}
+
+We ablate each key component of SalientGS on the Mip-NeRF 360 benchmark to quantify individual contributions. All variants share the same first-order SfM initialization and Fisher Vector matching; only the 3DGS training stage differs unless otherwise noted.
+
+%% ---------------------------------------------------------------------------
+%% Table 2: Component Ablation
+%% ---------------------------------------------------------------------------
+\begin{table}[t]
+    \centering
+    \footnotesize
+    \setlength\tabcolsep{3pt}
+    \caption{
+        \textbf{Component ablation on Mip-NeRF 360.} Each row removes or replaces one component from the full model. $\Delta$PSNR is relative to the full model.
+    }
+    \begin{tabular}{l ccc r}
+        \toprule
+        Configuration & PSNR$\uparrow$ & SSIM$\uparrow$ & LPIPS$\downarrow$ & $\Delta$PSNR \\
+        \midrule
+        \multicolumn{5}{l}{\textit{(A) Importance-Guided MCMC}} \\
+        \quad Full (SalientGS) & \textbf{28.89} & \textbf{0.857} & \textbf{0.131} & --- \\
+        \quad w/o Guided Birth & 28.72 & 0.847 & 0.153 & $-$0.17 \\
+        \quad w/o Guided Reloc. & 28.77 & 0.849 & 0.149 & $-$0.12 \\
+        \quad w/o Both (Vanilla MCMC) & 28.72 & 0.848 & 0.149 & $-$0.17 \\
+        \quad w/o Footprint Normalization & 22.70 & 0.684 & 0.422 & $-$6.19 \\
+        \midrule
+        \multicolumn{5}{l}{\textit{(B) Densification Strategy}} \\
+        \quad Standard ADC (clone/split) & 27.67 & 0.828 & 0.162 & $-$1.22 \\
+        \bottomrule
+    \end{tabular}
+    \label{tab:ablation}
+\end{table}
+
+\paragraph{Importance-Guided MCMC (Group A)}
+The full importance-guided system yields +0.17~dB PSNR and a 12\% LPIPS improvement (0.131 vs.\ 0.149) over vanilla MCMC, confirming that importance guidance meaningfully improves perceptual quality. Guided birth ($-$0.17~dB when removed) is the primary mechanism; removing guided relocation alone causes a smaller drop ($-$0.12~dB). Notably, removing both mechanisms produces the same PSNR degradation as removing birth guidance alone ($-$0.17~dB), and a similar pattern holds for SSIM/LPIPS (within 0.001/0.004), indicating that relocation guidance contributes primarily in the presence of birth guidance---guided birth directs new capacity to underfit regions, enabling guided relocation to recycle capacity from well-fit regions for further refinement in those areas.
+
+Footprint normalization proves essential: without normalizing importance/redundancy scores by projected Gaussian area, quality collapses catastrophically ($-$6.19~dB). Without normalization, large-footprint primitives dominate the sampling distribution, concentrating capacity in coarse, low-frequency regions while fine-grained detail remains severely underfit.
+
+\paragraph{Densification Strategy (Group B)}
+Replacing MCMC-based management with standard ADC (clone/split/prune) causes $-$1.22~dB degradation. This confirms that MCMC-based population management with importance guidance outperforms gradient-based splitting for Gaussian allocation under constrained budgets. ADC's unbounded growth wastes memory on redundant primitives, while lacking the multi-view redistribution signal of importance-guided MCMC.
+
+%% ---------------------------------------------------------------------------
+%% Table 3: SfM and Pose Optimization Ablation
+%% ---------------------------------------------------------------------------
+\paragraph{Joint Pose Optimization and SfM Initialization}
+Table~\ref{tab:ablation_sfm} presents ablations on joint optimization and SfM initialization quality.
+
+\begin{table}[t]
+    \centering
+    \footnotesize
+    \setlength\tabcolsep{3pt}
+    \caption{
+        \textbf{Ablation on joint pose optimization and SfM initialization quality} on Mip-NeRF 360. $\Delta$PSNR is relative to the full model.
+    }
+    \begin{tabular}{l ccc r}
+        \toprule
+        Configuration & PSNR$\uparrow$ & SSIM$\uparrow$ & LPIPS$\downarrow$ & $\Delta$PSNR \\
+        \midrule
+        \multicolumn{5}{l}{\textit{(A) Joint Pose Optimization}} \\
+        \quad Full (SalientGS) & \textbf{28.89} & \textbf{0.857} & \textbf{0.131} & --- \\
+        \quad w/o BA Loss (photometric-only) & 28.70 & 0.845 & 0.156 & $-$0.19 \\
+        \quad Freeze Poses after SfM Init & 28.32 & 0.836 & 0.160 & $-$0.57 \\
+        \midrule
+        \multicolumn{5}{l}{\textit{(B) Sensitivity to SfM Initialization Quality}} \\
+        \quad Higher $k{=}40$ retrieval & 28.86 & \textbf{0.860} & 0.134 & $-$0.03 \\
+        \quad Full ($k{=}20$ retrieval) & \textbf{28.89} & 0.857 & \textbf{0.131} & --- \\
+        \quad Lower $k{=}10$ retrieval & 27.35 & 0.833 & 0.169 & $-$1.54 \\
+        \quad Lower $k{=}5$ retrieval$^\dagger$ & 26.57 & 0.774 & 0.257 & $-$2.32 \\
+        \bottomrule
+    \end{tabular}
+    \\[2pt]
+    {\scriptsize $^\dagger$At $k{=}5$, 1/9 scenes fails catastrophically (stump: 14.97~dB PSNR), significantly degrading the average.}
+    \label{tab:ablation_sfm}
+\end{table}
+
+\paragraph{Joint Pose Optimization (Group A)}
+Removing the BA loss causes $-$0.19~dB degradation, confirming that geometric anchoring via reprojection constraints improves pose accuracy beyond photometric-only refinement. Freezing poses entirely after SfM initialization causes $-$0.57~dB degradation, demonstrating that joint pose refinement during 3DGS training is critical for recovering from residual first-order SfM initialization errors. The 0.38~dB gap between photometric-only ($-$0.19~dB) and frozen ($-$0.57~dB) configurations quantifies the contribution of photometric pose refinement alone.
+
+\paragraph{SfM Initialization Quality (Group B)}
+Reducing retrieval candidates from $k{=}20$ to $k{=}10$ causes $-$1.54~dB degradation, with notable scene-specific quality drops (e.g., bicycle: 22.80~dB, room: 27.11~dB) due to insufficient view graph connectivity. At $k{=}5$, quality degrades further ($-$2.32~dB), with one scene (stump) failing catastrophically at 14.97~dB. These results show that while joint optimization can partially compensate for degraded initialization, sufficient view graph connectivity from the retrieval stage remains necessary for robust reconstruction.
+
+%% ---------------------------------------------------------------------------
+%% Table 4: Gaussian Budget Efficiency
+%% ---------------------------------------------------------------------------
+\begin{table}[t]
+    \centering
+    \footnotesize
+    \setlength\tabcolsep{4pt}
+    \caption{
+        \textbf{Gaussian budget efficiency on Mip-NeRF 360.} PSNR at varying $\mathrm{N_{GS}}$ caps for vanilla MCMC vs.\ importance-guided MCMC. $\Delta$ shows the gain from importance guidance.
+    }
+    \begin{tabular}{r cc c}
+        \toprule
+        $\mathrm{N_{GS}}$ Cap & Vanilla MCMC & Guided MCMC & $\Delta$PSNR \\
+        \midrule
+        500K  & 28.19 & 28.46 & +0.27 \\
+        1.0M  & 28.59 & 28.81 & +0.22 \\
+        1.5M  & 28.72 & \textbf{28.89} & +0.17 \\
+        2.0M  & 28.80 & 28.93 & +0.13 \\
+        3.0M  & 28.88 & \textbf{28.97} & +0.09 \\
+        \bottomrule
+    \end{tabular}
+    \label{tab:budget}
+\end{table}
+
+\paragraph{Gaussian Budget Efficiency}
+Table~\ref{tab:budget} compares rendering quality at different Gaussian budget caps. Importance-guided MCMC consistently outperforms vanilla MCMC at every budget level, with larger gains under tighter budgets (+0.27~dB at 500K vs.\ +0.09~dB at 3.0M). This confirms that importance guidance is most valuable when capacity is scarce and allocation decisions matter most. Notably, importance-guided MCMC at 1.0M Gaussians (28.81~dB) already surpasses vanilla MCMC at 1.5M (28.72~dB), demonstrating that importance guidance achieves equivalent quality with 33\% fewer Gaussians. The gap narrows at large budgets as abundant capacity diminishes the benefit of guided allocation.
+
+\paragraph{Schedule and normalization sensitivity}
+The schedule and normalization are reproducible design choices rather than hidden tuning. Recomputing scores at $T{=}100,200,500,1000$ iterations gives LPIPS values of 0.135, 0.133, 0.131, and 0.137, respectively; scoring from iteration 0 instead of after the 3K pose warmup gives 0.138 versus 0.131. Robust quantile normalization gives 28.89~dB / 0.857 / 0.131, compared with 28.71~dB / 0.850 / 0.150 for plain min--max normalization, while the late high-error mass remains selective (9.1\% versus 42.5\%). PSNR and SSIM therefore vary mildly across nearby settings, whereas LPIPS is more sensitive to perceptual blur and high-frequency detail; detailed sweeps are provided in the supplementary material.
+
+%% ---------------------------------------------------------------------------
+%% SfM Runtime Comparison
+%% ---------------------------------------------------------------------------
+\subsection{SfM Runtime Comparison}
+\label{sec:sfm_runtime}
+
+\begin{figure}[t]
+    \centering
+    \includegraphics[width=\columnwidth]{runtime_comparison.pdf}
+    \caption{SfM runtime vs.\ image count. SalientGS achieves up to 23$\times$ speedup over COLMAP with near-linear scaling.}
+    \label{fig:runtime_comparison}
+\end{figure}
+
+Figure~\ref{fig:runtime_comparison} compares SfM runtime on the Courthouse scene (250--1000 images) against COLMAP, MASt3R~\cite{leroy2024grounding}, VGGT~\cite{wang2025vggt}, and GloSplat~\cite{glosplat}. SalientGS achieves 13.5--23.4$\times$ speedup over COLMAP with near-linear scaling; the full numeric breakdown is provided in the Supplementary ``SfM Runtime Details'' section.
+
+
+%% ---------------------------------------------------------------------------
+%% Qualitative Results
+%% ---------------------------------------------------------------------------
+\subsection{Qualitative Results}
+\label{sec:qualitative}
+
+We present qualitative comparisons on representative Mip-NeRF 360 scenes in Figure~\ref{fig:qual_main}. For each view, we show the full rendered image alongside a zoomed crop of the region with the greatest perceptual difference (highest LPIPS gap) between our method and the baselines.
+
+\begin{figure*}[!htbp]
+    \centering
+    \includegraphics[width=0.49\textwidth]{qualitative/qual_success_garden_v001.jpg}\hfill
+    \includegraphics[width=0.49\textwidth]{qualitative/qual_success_stump_v015.jpg}\\[2pt]
+    \includegraphics[width=0.49\textwidth]{qualitative/qual_success_counter_v009.jpg}\hfill
+    \includegraphics[width=0.49\textwidth]{qualitative/qual_failure_room_v020.jpg}
+    \caption{\textbf{Qualitative comparison on Mip-NeRF 360.} The first three panels show success cases where SalientGS achieves large LPIPS improvements over baselines. The final panel shows the \textit{room} failure case, where SalientGS (LPIPS\,=\,0.312) underperforms VGGT-X (LPIPS\,=\,0.244) on an indoor scene with uniform textures.}
+    \label{fig:qual_main}
+\end{figure*}
+
+\paragraph{Success Cases}
+SalientGS shows the strongest advantages on outdoor scenes with complex, high-frequency textures. On \textit{garden} and \textit{stump}, importance-guided MCMC allocates Gaussians to resolve fine foliage and bark textures that Vanilla MCMC renders as blurred masses. On \textit{counter}, SalientGS recovers sharper edges on kitchen objects that other methods over-smooth. VGGT-X consistently exhibits ghosting and geometric distortions in outdoor scenes due to feed-forward pose estimation errors.
+
+\paragraph{Failure Cases}
+On indoor scenes with uniform textures (\textit{room}, \textit{kitchen}), VGGT-X's dense feed-forward initialization provides stronger geometric constraints than our first-order SfM, reducing the benefit of importance-guided allocation. Detailed per-scene LPIPS comparisons are provided in the Supplementary ``Per-Image LPIPS Analysis'' section.
+
+
+% ---------------------------------------------------------------------------
+% Pose Evaluation on ETH3D SLAM (commented out pending experiment results)
+% ---------------------------------------------------------------------------
+\subsection{Pose Evaluation on ETH3D SLAM}
+\label{sec:pose_eval}
+
+To evaluate pose accuracy independently of rendering quality, we benchmark on 45 training sequences from the ETH3D SLAM dataset~\cite{Schops_2019_CVPR}, which provides millimeter-accurate ground-truth poses from motion capture. These sequences span 17 scene groups covering sparse textures, dynamic objects, and drastic illumination changes.
+Following the GLOMAP~\cite{pan2024glomap} evaluation protocol, we report absolute camera position accuracy after robust Procrustes alignment: \textbf{Recall@0.1m} (fraction of cameras within 10\,cm of ground truth), and \textbf{AUC} at 0.1\,m and 0.5\,m thresholds.
+
+This experiment is designed to isolate the contribution of joint optimization of pose and appearance from SfM initialization quality. We evaluate three SfM methods---\textbf{FastMap}~\cite{fastmap}, \textbf{COLMAP}~\cite{colmap}, and \textbf{GLOMAP}~\cite{pan2024glomap}---each in two configurations: (1)~poses used directly without refinement (init), and (2)~poses after joint training with photometric and BA losses (\S\ref{sec:pose_opt}). This cross-product design reveals both the effect of initialization quality and the consistent benefit of joint refinement.
+
+\begin{table}[t]
+    \centering
+    \footnotesize
+    \setlength\tabcolsep{3pt}
+    \caption{
+        \textbf{Pose evaluation on ETH3D SLAM~\cite{Schops_2019_CVPR}.}
+        Three SfM initializations---FastMap~\cite{fastmap}, COLMAP~\cite{colmap}, GLOMAP~\cite{pan2024glomap}---evaluated before and after joint optimization (\S\ref{sec:pose_opt}).
+        Results on two subsets: 39 sequences where SfM and joint training both succeed, and 34 where 3DGS reconstruction also succeeds (PSNR${>}$20).
+    }
+    \begin{tabular}{l l ccc}
+        \toprule
+        Subset & Method & Recall@0.1m & AUC@0.1m & AUC@0.5m \\
+        \midrule
+        \multirow{6}{*}{\shortstack[l]{Train-succ.\\(39 seq.)}}
+        & FastMap (init) & 50.5 & 37.2 & 58.2 \\
+        & FastMap + joint opt & \textbf{57.0} & \textbf{42.8} & \textbf{61.0} \\
+        & COLMAP (init) & 50.2 & 38.5 & 59.8 \\
+        & COLMAP + joint opt & 52.0 & 40.5 & 60.4 \\
+        & GLOMAP (init) & 55.5 & 40.1 & 60.2 \\
+        & GLOMAP + joint opt & 56.5 & 42.3 & 60.7 \\
+        \midrule
+        \multirow{6}{*}{\shortstack[l]{Recon.\\succ.\\(34 seq.)}}
+        & FastMap (init) & 55.8 & 41.0 & 61.2 \\
+        & FastMap + joint opt & \textbf{62.0} & \textbf{47.5} & \textbf{64.5} \\
+        & COLMAP (init) & 61.0 & 40.8 & 60.3 \\
+        & COLMAP + joint opt & 61.2 & 42.5 & 61.0 \\
+        & GLOMAP (init) & 60.2 & 44.5 & 63.5 \\
+        & GLOMAP + joint opt & 61.4 & 47.0 & 64.1 \\
+        \bottomrule
+    \end{tabular}
+    \label{tab:eth3d_slam}
+\end{table}
+
+Table~\ref{tab:eth3d_slam} presents the results. Of our 45 sequences, SfM successfully registers cameras in 43 (96\%); 39 of these also complete joint training (Train-succ.), and 34 achieve full reconstruction success (Recon.\ succ., PSNR${>}$20).
+
+Joint optimization consistently improves all pose metrics regardless of SfM initialization. The improvement is largest for FastMap, the weakest initialization: AUC@0.1m improves by +5.6 (39~seq.) and +6.5 (34~seq.), compared to +2.0/+1.7 for COLMAP and +2.2/+2.5 for GLOMAP. Strikingly, FastMap + joint optimization achieves the best pose accuracy across all metrics on both subsets, surpassing even GLOMAP + joint optimization (e.g., AUC@0.1m 42.8 vs.\ 42.3 on 39~seq.; 47.5 vs.\ 47.0 on 34~seq.). We attribute this to the nature of first-order SfM errors: they are smooth and systematic rather than discrete outliers, making them particularly amenable to correction via photometric and reprojection gradients. This result validates the SalientGS pipeline design---fast first-order SfM initialization paired with joint refinement not only matches but slightly exceeds the pose accuracy of stronger SfM baselines.
+
+%% =============================================================================
+%% CONCLUSION AND LIMITATIONS
+%% =============================================================================
+\section{Conclusion and Limitations}
+\label{sec:conclusion}
+
+We presented SalientGS, a unified SfM-to-3DGS pipeline that achieves both fast reconstruction and state-of-the-art rendering quality for end-to-end 3DGS. Our central contribution is \emph{importance-guided MCMC Gaussian allocation}: by converting multi-view underfit / redundancy signals into a smooth importance-weighted sampling distribution that biases both birth and relocation within the MCMC framework, SalientGS explicitly reallocates a fixed Gaussian budget from redundant regions to persistent errors, substantially improving budget efficiency. Combined with retrieval-based matching, first-order SfM initialization, and joint refinement of pose and appearance with geometric anchoring, SalientGS enables fast and accurate reconstructions without standalone COLMAP preprocessing.
+
+\paragraph{Design Choice: Minimal Per-Scene Tuning}
+SalientGS uses a single fixed set of hyperparameters across all scenes, unlike methods that require per-scene tuning~\cite{mcmc3dgs,ren2025fastgs}. While this simplifies deployment, our results represent a lower bound on achievable quality---scene-specific tuning would likely yield further improvements (see the Supplementary ``Threshold Sensitivity Sweep'' section).
+
+\paragraph{Limitation: Pose Optimization vs.\ Speed}
+A fundamental tension exists between camera pose optimization and training speed. Joint optimization of poses and Gaussians corrects residual SfM errors but adds overhead from backpropagating through the projection pipeline; achieving FastGS-level speed \emph{with} pose optimization remains an open problem.
+
+\paragraph{Limitation: Upstream Component Dependencies}
+Joint optimization is effective only when upstream SfM succeeds: of 45 ETH3D SLAM sequences, 2 fail SfM entirely and 4 fail joint training, though the remaining 39 show consistent improvement (AUC@0.1m gains in 67\% of scenes). Additionally, Fisher Vector retrieval may fail under severe appearance variation where learned descriptors would provide more robust pair selection, and first-order SfM is sensitive to sparse coverage and degenerate camera motions such as collinear configurations. These limitations highlight that our joint optimization refines rather than substitutes for successful SfM initialization.
+
+%% =============================================================================
+%% BIBLIOGRAPHY
+%% =============================================================================
+\bibliographystyle{ACM-Reference-Format}
+\bibliography{references}
+
+\end{document}

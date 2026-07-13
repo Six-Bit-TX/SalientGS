@@ -1,0 +1,569 @@
+%%% -*-BibTeX-*-
+%%% Do NOT edit. File created by BibTeX with style
+%%% ACM-Reference-Format-Journals [18-Jan-2012].
+
+\begin{thebibliography}{42}
+
+%%% ====================================================================
+%%% NOTE TO THE USER: you can override these defaults by providing
+%%% customized versions of any of these macros before the \bibliography
+%%% command.  Each of them MUST provide its own final punctuation,
+%%% except for \shownote{} and \showURL{}.  The latter two
+%%% do not use final punctuation, in order to avoid confusing it with
+%%% the Web address.
+%%%
+%%% To suppress output of a particular field, define its macro to expand
+%%% to an empty string, or better, \unskip, like this:
+%%%
+%%% \newcommand{\showURL}[1]{\unskip}   % LaTeX syntax
+%%%
+%%% \def \showURL #1{\unskip}           % plain TeX syntax
+%%%
+%%% ====================================================================
+
+\ifx \showCODEN    \undefined \def \showCODEN     #1{\unskip}     \fi
+\ifx \showISBNx    \undefined \def \showISBNx     #1{\unskip}     \fi
+\ifx \showISBNxiii \undefined \def \showISBNxiii  #1{\unskip}     \fi
+\ifx \showISSN     \undefined \def \showISSN      #1{\unskip}     \fi
+\ifx \showLCCN     \undefined \def \showLCCN      #1{\unskip}     \fi
+\ifx \shownote     \undefined \def \shownote      #1{#1}          \fi
+\ifx \showarticletitle \undefined \def \showarticletitle #1{#1}   \fi
+\ifx \showURL      \undefined \def \showURL       {\relax}        \fi
+% The following commands are used for tagged output and should be
+% invisible to TeX
+\providecommand\bibfield[2]{#2}
+\providecommand\bibinfo[2]{#2}
+\providecommand\natexlab[1]{#1}
+\providecommand\showeprint[2][]{arXiv:#2}
+
+\bibitem[Arandjelovic et~al\mbox{.}(2016)]%
+        {arandjelovic2016netvlad}
+\bibfield{author}{\bibinfo{person}{Relja Arandjelovic}, \bibinfo{person}{Petr
+  Gronat}, \bibinfo{person}{Akihiko Torii}, \bibinfo{person}{Tomas Pajdla},
+  {and} \bibinfo{person}{Josef Sivic}.} \bibinfo{year}{2016}\natexlab{}.
+\newblock \showarticletitle{NetVLAD: CNN architecture for weakly supervised
+  place recognition}. In \bibinfo{booktitle}{\emph{Proceedings of the IEEE
+  Conference on Computer Vision and Pattern Recognition}}.
+  \bibinfo{publisher}{IEEE}, \bibinfo{address}{Piscataway, NJ, USA},
+  \bibinfo{pages}{5297--5307}.
+\newblock
+
+
+\bibitem[Barbarani et~al\mbox{.}(2024)]%
+        {megaloc}
+\bibfield{author}{\bibinfo{person}{Gabriele Barbarani},
+  \bibinfo{person}{Gabriele Trivigno}, \bibinfo{person}{Carlo Berton},
+  \bibinfo{person}{Debora Mereu}, {and} \bibinfo{person}{Carlo Masone}.}
+  \bibinfo{year}{2024}\natexlab{}.
+\newblock \showarticletitle{MegaLoc: One Retrieval to Place Them All}. In
+  \bibinfo{booktitle}{\emph{European Conference on Computer Vision}}.
+  \bibinfo{publisher}{Springer}, \bibinfo{address}{Cham},
+  \bibinfo{pages}{382--400}.
+\newblock
+
+
+\bibitem[Barron et~al\mbox{.}(2021)]%
+        {barron2021mip}
+\bibfield{author}{\bibinfo{person}{Jonathan~T Barron}, \bibinfo{person}{Ben
+  Mildenhall}, \bibinfo{person}{Matthew Tancik}, \bibinfo{person}{Peter
+  Hedman}, \bibinfo{person}{Ricardo Martin-Brualla}, {and}
+  \bibinfo{person}{Pratul~P Srinivasan}.} \bibinfo{year}{2021}\natexlab{}.
+\newblock \showarticletitle{Mip-nerf: A multiscale representation for
+  anti-aliasing neural radiance fields}. In
+  \bibinfo{booktitle}{\emph{Proceedings of the IEEE/CVF International
+  Conference on Computer Vision}}. \bibinfo{publisher}{IEEE},
+  \bibinfo{address}{Piscataway, NJ, USA}, \bibinfo{pages}{5855--5864}.
+\newblock
+
+
+\bibitem[Barron et~al\mbox{.}(2022)]%
+        {barron2022mip}
+\bibfield{author}{\bibinfo{person}{Jonathan~T Barron}, \bibinfo{person}{Ben
+  Mildenhall}, \bibinfo{person}{Dor Verbin}, \bibinfo{person}{Pratul~P
+  Srinivasan}, {and} \bibinfo{person}{Peter Hedman}.}
+  \bibinfo{year}{2022}\natexlab{}.
+\newblock \showarticletitle{Mip-nerf 360: Unbounded anti-aliased neural
+  radiance fields}. In \bibinfo{booktitle}{\emph{Proceedings of the IEEE/CVF
+  Conference on Computer Vision and Pattern Recognition}}.
+  \bibinfo{publisher}{IEEE}, \bibinfo{address}{Piscataway, NJ, USA},
+  \bibinfo{pages}{5470--5479}.
+\newblock
+
+
+\bibitem[Chen et~al\mbox{.}(2025)]%
+        {chen2025dashgaussian}
+\bibfield{author}{\bibinfo{person}{Youyu Chen}, \bibinfo{person}{Junjun Jiang},
+  \bibinfo{person}{Kui Jiang}, \bibinfo{person}{Xiao Tang},
+  \bibinfo{person}{Zhihao Li}, \bibinfo{person}{Xianming Liu}, {and}
+  \bibinfo{person}{Yinyu Nie}.} \bibinfo{year}{2025}\natexlab{}.
+\newblock \showarticletitle{DashGaussian: Optimizing 3D Gaussian Splatting in
+  200 Seconds}. In \bibinfo{booktitle}{\emph{Proceedings of the Computer Vision
+  and Pattern Recognition Conference}}. \bibinfo{publisher}{IEEE},
+  \bibinfo{address}{Piscataway, NJ, USA}, \bibinfo{pages}{11146--11155}.
+\newblock
+
+
+\bibitem[Fang and Wang(2024)]%
+        {fang2024mini}
+\bibfield{author}{\bibinfo{person}{Guangchi Fang} {and} \bibinfo{person}{Bing
+  Wang}.} \bibinfo{year}{2024}\natexlab{}.
+\newblock \showarticletitle{Mini-splatting: Representing scenes with a
+  constrained number of gaussians}. In \bibinfo{booktitle}{\emph{European
+  Conference on Computer Vision}}. \bibinfo{publisher}{Springer},
+  \bibinfo{address}{Cham}, \bibinfo{pages}{165--181}.
+\newblock
+
+
+\bibitem[Fu et~al\mbox{.}(2024)]%
+        {fu2024colmap}
+\bibfield{author}{\bibinfo{person}{Yang Fu}, \bibinfo{person}{Sifei Liu},
+  \bibinfo{person}{Amey Kulkarni}, \bibinfo{person}{Jan Kautz},
+  \bibinfo{person}{Alexei~A Efros}, {and} \bibinfo{person}{Xiaolong Wang}.}
+  \bibinfo{year}{2024}\natexlab{}.
+\newblock \showarticletitle{COLMAP-Free 3D Gaussian Splatting}. In
+  \bibinfo{booktitle}{\emph{Proceedings of the IEEE/CVF Conference on Computer
+  Vision and Pattern Recognition}}. \bibinfo{publisher}{IEEE},
+  \bibinfo{address}{Piscataway, NJ, USA}, \bibinfo{pages}{20796--20805}.
+\newblock
+
+
+\bibitem[Govindu(2001)]%
+        {govindu2001combining}
+\bibfield{author}{\bibinfo{person}{Venu~Madhav Govindu}.}
+  \bibinfo{year}{2001}\natexlab{}.
+\newblock \showarticletitle{Combining two-view constraints for motion
+  estimation}. In \bibinfo{booktitle}{\emph{Proceedings of the 2001 IEEE
+  Computer Society Conference on Computer Vision and Pattern Recognition}},
+  Vol.~\bibinfo{volume}{2}. \bibinfo{publisher}{IEEE},
+  \bibinfo{address}{Piscataway, NJ, USA}, \bibinfo{pages}{II--II}.
+\newblock
+
+
+\bibitem[Hanson et~al\mbox{.}(2025)]%
+        {hanson2025speedy}
+\bibfield{author}{\bibinfo{person}{Alex Hanson}, \bibinfo{person}{Allen Tu},
+  \bibinfo{person}{Geng Lin}, \bibinfo{person}{Vasu Singla},
+  \bibinfo{person}{Matthias Zwicker}, {and} \bibinfo{person}{Tom Goldstein}.}
+  \bibinfo{year}{2025}\natexlab{}.
+\newblock \showarticletitle{Speedy-splat: Fast 3d gaussian splatting with
+  sparse pixels and sparse primitives}. In
+  \bibinfo{booktitle}{\emph{Proceedings of the Computer Vision and Pattern
+  Recognition Conference}}. \bibinfo{publisher}{IEEE},
+  \bibinfo{address}{Piscataway, NJ, USA}, \bibinfo{pages}{21537--21546}.
+\newblock
+
+
+\bibitem[Hartley et~al\mbox{.}(2013)]%
+        {hartley2013rotation}
+\bibfield{author}{\bibinfo{person}{Richard Hartley}, \bibinfo{person}{Jochen
+  Trumpf}, \bibinfo{person}{Yuchao Dai}, {and} \bibinfo{person}{Hongdong Li}.}
+  \bibinfo{year}{2013}\natexlab{}.
+\newblock \showarticletitle{Rotation averaging}.
+\newblock \bibinfo{journal}{\emph{International Journal of Computer Vision}}
+  \bibinfo{volume}{103}, \bibinfo{number}{3} (\bibinfo{year}{2013}),
+  \bibinfo{pages}{267--305}.
+\newblock
+
+
+\bibitem[Hedman et~al\mbox{.}(2018)]%
+        {hedman2018deep}
+\bibfield{author}{\bibinfo{person}{Peter Hedman}, \bibinfo{person}{Julien
+  Philip}, \bibinfo{person}{True Price}, \bibinfo{person}{Jan-Michael Frahm},
+  \bibinfo{person}{George Drettakis}, {and} \bibinfo{person}{Gabriel Brostow}.}
+  \bibinfo{year}{2018}\natexlab{}.
+\newblock \showarticletitle{Deep blending for free-viewpoint image-based
+  rendering}.
+\newblock \bibinfo{journal}{\emph{ACM Transactions on Graphics (ToG)}}
+  \bibinfo{volume}{37}, \bibinfo{number}{6} (\bibinfo{year}{2018}),
+  \bibinfo{pages}{1--15}.
+\newblock
+
+
+\bibitem[Huang et~al\mbox{.}(2025)]%
+        {huang20253r}
+\bibfield{author}{\bibinfo{person}{Boyao Huang} {et~al\mbox{.}}}
+  \bibinfo{year}{2025}\natexlab{}.
+\newblock \showarticletitle{3R-GS: Efficient Gaussian Splatting without SfM
+  Using 3D Reconstruction Model}.
+\newblock \bibinfo{journal}{\emph{arXiv preprint arXiv:2503.04946}}
+  (\bibinfo{year}{2025}).
+\newblock
+
+
+\bibitem[J{\'e}gou et~al\mbox{.}(2010)]%
+        {jegou2010aggregating}
+\bibfield{author}{\bibinfo{person}{Herv{\'e} J{\'e}gou},
+  \bibinfo{person}{Matthijs Douze}, \bibinfo{person}{Cordelia Schmid}, {and}
+  \bibinfo{person}{Patrick P{\'e}rez}.} \bibinfo{year}{2010}\natexlab{}.
+\newblock \showarticletitle{Aggregating local descriptors into a compact image
+  representation}. In \bibinfo{booktitle}{\emph{Proceedings of the IEEE
+  Conference on Computer Vision and Pattern Recognition}}.
+  \bibinfo{publisher}{IEEE}, \bibinfo{address}{Piscataway, NJ, USA},
+  \bibinfo{pages}{3304--3311}.
+\newblock
+
+
+\bibitem[Ji et~al\mbox{.}(2025)]%
+        {ji2025sfm}
+\bibfield{author}{\bibinfo{person}{Zihao Ji} {et~al\mbox{.}}}
+  \bibinfo{year}{2025}\natexlab{}.
+\newblock \showarticletitle{Hierarchical Tracking 3DGS: Robust SfM-Free 3D
+  Gaussian Splatting}. In \bibinfo{booktitle}{\emph{Proceedings of the Computer
+  Vision and Pattern Recognition Conference}}. \bibinfo{publisher}{IEEE},
+  \bibinfo{address}{Piscataway, NJ, USA}, \bibinfo{pages}{6170--6180}.
+\newblock
+
+
+\bibitem[Johnson et~al\mbox{.}(2019)]%
+        {faiss}
+\bibfield{author}{\bibinfo{person}{Jeff Johnson}, \bibinfo{person}{Matthijs
+  Douze}, {and} \bibinfo{person}{Herv{\'e} J{\'e}gou}.}
+  \bibinfo{year}{2019}\natexlab{}.
+\newblock \showarticletitle{Billion-scale similarity search with GPUs}.
+\newblock \bibinfo{journal}{\emph{IEEE Transactions on Big Data}}
+  \bibinfo{volume}{7}, \bibinfo{number}{3} (\bibinfo{year}{2019}),
+  \bibinfo{pages}{535--547}.
+\newblock
+
+
+\bibitem[Kerbl et~al\mbox{.}(2023)]%
+        {kerbl3Dgaussians}
+\bibfield{author}{\bibinfo{person}{Bernhard Kerbl}, \bibinfo{person}{Georgios
+  Kopanas}, \bibinfo{person}{Thomas Leimk{\"u}hler}, {and}
+  \bibinfo{person}{George Drettakis}.} \bibinfo{year}{2023}\natexlab{}.
+\newblock \showarticletitle{3D Gaussian Splatting for Real-Time Radiance Field
+  Rendering}.
+\newblock \bibinfo{journal}{\emph{ACM Transactions on Graphics}}
+  \bibinfo{volume}{42}, \bibinfo{number}{4}, Article \bibinfo{articleno}{139}
+  (\bibinfo{date}{July} \bibinfo{year}{2023}), \bibinfo{numpages}{14}~pages.
+\newblock
+\urldef\tempurl%
+\url{https://repo-sam.inria.fr/fungraph/3d-gaussian-splatting/}
+\showURL{%
+\tempurl}
+
+
+\bibitem[Kheradmand et~al\mbox{.}(2024)]%
+        {mcmc3dgs}
+\bibfield{author}{\bibinfo{person}{Shakiba Kheradmand}, \bibinfo{person}{Daniel
+  Rebain}, \bibinfo{person}{Gopal Sharma}, \bibinfo{person}{Weiwei Sun},
+  \bibinfo{person}{Jeff Tseng}, \bibinfo{person}{Hossam Isber}, {and}
+  \bibinfo{person}{Andrea Tagliasacchi}.} \bibinfo{year}{2024}\natexlab{}.
+\newblock \showarticletitle{3D Gaussian Splatting as Markov Chain Monte Carlo}.
+  In \bibinfo{booktitle}{\emph{Advances in Neural Information Processing
+  Systems}}, Vol.~\bibinfo{volume}{37}. \bibinfo{publisher}{Curran Associates,
+  Inc.}, \bibinfo{address}{Red Hook, NY, USA}.
+\newblock
+
+
+\bibitem[Knapitsch et~al\mbox{.}(2017)]%
+        {knapitsch2017tanks}
+\bibfield{author}{\bibinfo{person}{Arno Knapitsch}, \bibinfo{person}{Jaesik
+  Park}, \bibinfo{person}{Qian-Yi Zhou}, {and} \bibinfo{person}{Vladlen
+  Koltun}.} \bibinfo{year}{2017}\natexlab{}.
+\newblock \showarticletitle{Tanks and temples: Benchmarking large-scale scene
+  reconstruction}.
+\newblock \bibinfo{journal}{\emph{ACM Transactions on Graphics (ToG)}}
+  \bibinfo{volume}{36}, \bibinfo{number}{4} (\bibinfo{year}{2017}),
+  \bibinfo{pages}{1--13}.
+\newblock
+
+
+\bibitem[Leroy et~al\mbox{.}(2024)]%
+        {leroy2024grounding}
+\bibfield{author}{\bibinfo{person}{Vincent Leroy}, \bibinfo{person}{Yohann
+  Cabon}, {and} \bibinfo{person}{Jerome Revaud}.}
+  \bibinfo{year}{2024}\natexlab{}.
+\newblock \showarticletitle{Grounding Image Matching in 3D with MASt3R}. In
+  \bibinfo{booktitle}{\emph{European Conference on Computer Vision}}.
+  \bibinfo{publisher}{Springer}, \bibinfo{address}{Cham},
+  \bibinfo{pages}{71--91}.
+\newblock
+
+
+\bibitem[Li et~al\mbox{.}(2026)]%
+        {fastmap}
+\bibfield{author}{\bibinfo{person}{Jiahao Li}, \bibinfo{person}{Haochen Wang},
+  \bibinfo{person}{Muhammad~Zubair Irshad}, \bibinfo{person}{Igor Vasiljevic},
+  \bibinfo{person}{Matthew~R Walter}, \bibinfo{person}{Vitor~Campagnolo
+  Guizilini}, {and} \bibinfo{person}{Greg Shakhnarovich}.}
+  \bibinfo{year}{2026}\natexlab{}.
+\newblock \showarticletitle{FastMap: Revisiting Structure from Motion through
+  First-Order Optimization}. In \bibinfo{booktitle}{\emph{Proceedings of the
+  International Conference on 3D Vision}}. \bibinfo{publisher}{IEEE},
+  \bibinfo{address}{Piscataway, NJ, USA}.
+\newblock
+
+
+\bibitem[Lin et~al\mbox{.}(2021)]%
+        {lin2021barf}
+\bibfield{author}{\bibinfo{person}{Chen-Hsuan Lin}, \bibinfo{person}{Wei-Chiu
+  Ma}, \bibinfo{person}{Antonio Torralba}, {and} \bibinfo{person}{Simon
+  Lucey}.} \bibinfo{year}{2021}\natexlab{}.
+\newblock \showarticletitle{BARF: Bundle-Adjusting Neural Radiance Fields}. In
+  \bibinfo{booktitle}{\emph{Proceedings of the IEEE/CVF International
+  Conference on Computer Vision}}. \bibinfo{publisher}{IEEE},
+  \bibinfo{address}{Piscataway, NJ, USA}, \bibinfo{pages}{5741--5751}.
+\newblock
+
+
+\bibitem[Mallick et~al\mbox{.}(2024)]%
+        {mallick2024taming}
+\bibfield{author}{\bibinfo{person}{Saswat~Subhajyoti Mallick},
+  \bibinfo{person}{Rahul Goel}, \bibinfo{person}{Bernhard Kerbl},
+  \bibinfo{person}{Markus Steinberger}, \bibinfo{person}{Francisco~Vicente
+  Carrasco}, {and} \bibinfo{person}{Fernando De~La~Torre}.}
+  \bibinfo{year}{2024}\natexlab{}.
+\newblock \showarticletitle{Taming 3dgs: High-quality radiance fields with
+  limited resources}. In \bibinfo{booktitle}{\emph{SIGGRAPH Asia 2024
+  Conference Papers}}. \bibinfo{publisher}{ACM}, \bibinfo{address}{New York,
+  NY, USA}, \bibinfo{pages}{1--11}.
+\newblock
+
+
+\bibitem[Martinec and Pajdla(2007)]%
+        {martinec2007robust}
+\bibfield{author}{\bibinfo{person}{Daniel Martinec} {and}
+  \bibinfo{person}{Tomas Pajdla}.} \bibinfo{year}{2007}\natexlab{}.
+\newblock \showarticletitle{Robust rotation and translation estimation in
+  multiview reconstruction}. In \bibinfo{booktitle}{\emph{2007 IEEE Conference
+  on Computer Vision and Pattern Recognition}}. \bibinfo{publisher}{IEEE},
+  \bibinfo{address}{Piscataway, NJ, USA}, \bibinfo{pages}{1--8}.
+\newblock
+
+
+\bibitem[Mildenhall et~al\mbox{.}(2020)]%
+        {mildenhall2021nerf}
+\bibfield{author}{\bibinfo{person}{Ben Mildenhall}, \bibinfo{person}{Pratul~P
+  Srinivasan}, \bibinfo{person}{Matthew Tancik}, \bibinfo{person}{Jonathan~T
+  Barron}, \bibinfo{person}{Ravi Ramamoorthi}, {and} \bibinfo{person}{Ren Ng}.}
+  \bibinfo{year}{2020}\natexlab{}.
+\newblock \showarticletitle{Nerf: Representing scenes as neural radiance fields
+  for view synthesis}. In \bibinfo{booktitle}{\emph{European Conference on
+  Computer Vision}}. \bibinfo{publisher}{Springer}, \bibinfo{address}{Cham},
+  \bibinfo{pages}{405--421}.
+\newblock
+
+
+\bibitem[Moulon et~al\mbox{.}(2016)]%
+        {moulon2017openmvg}
+\bibfield{author}{\bibinfo{person}{Pierre Moulon}, \bibinfo{person}{Pascal
+  Monasse}, \bibinfo{person}{Romuald Perrot}, {and} \bibinfo{person}{Renaud
+  Marlet}.} \bibinfo{year}{2016}\natexlab{}.
+\newblock \showarticletitle{OpenMVG: Open multiple view geometry}. In
+  \bibinfo{booktitle}{\emph{International Workshop on Reproducible Research in
+  Pattern Recognition}}. \bibinfo{publisher}{Springer},
+  \bibinfo{address}{Cham}, \bibinfo{pages}{60--74}.
+\newblock
+
+
+\bibitem[M{\"u}ller et~al\mbox{.}(2022)]%
+        {muller2022instant}
+\bibfield{author}{\bibinfo{person}{Thomas M{\"u}ller}, \bibinfo{person}{Alex
+  Evans}, \bibinfo{person}{Christoph Schied}, {and} \bibinfo{person}{Alexander
+  Keller}.} \bibinfo{year}{2022}\natexlab{}.
+\newblock \showarticletitle{Instant neural graphics primitives with a
+  multiresolution hash encoding}. In \bibinfo{booktitle}{\emph{ACM SIGGRAPH
+  2022 Conference Proceedings}}. \bibinfo{publisher}{ACM},
+  \bibinfo{address}{New York, NY, USA}, \bibinfo{pages}{1--15}.
+\newblock
+
+
+\bibitem[Pan et~al\mbox{.}(2024)]%
+        {pan2024glomap}
+\bibfield{author}{\bibinfo{person}{Linfei Pan}, \bibinfo{person}{Daniel
+  Barath}, \bibinfo{person}{Marc Pollefeys}, {and} \bibinfo{person}{Johannes~L
+  Sch{\"o}nberger}.} \bibinfo{year}{2024}\natexlab{}.
+\newblock \showarticletitle{Global structure-from-motion revisited}. In
+  \bibinfo{booktitle}{\emph{European Conference on Computer Vision}}.
+  \bibinfo{publisher}{Springer}, \bibinfo{address}{Cham},
+  \bibinfo{pages}{58--77}.
+\newblock
+
+
+\bibitem[Perronnin et~al\mbox{.}(2010)]%
+        {perronnin2010fisher}
+\bibfield{author}{\bibinfo{person}{Florent Perronnin}, \bibinfo{person}{Jorge
+  S{\'a}nchez}, {and} \bibinfo{person}{Thomas Mensink}.}
+  \bibinfo{year}{2010}\natexlab{}.
+\newblock \showarticletitle{Improving the fisher kernel for large-scale image
+  classification}. In \bibinfo{booktitle}{\emph{European Conference on Computer
+  Vision}}. \bibinfo{publisher}{Springer}, \bibinfo{address}{Cham},
+  \bibinfo{pages}{143--156}.
+\newblock
+
+
+\bibitem[Ren et~al\mbox{.}(2025)]%
+        {ren2025fastgs}
+\bibfield{author}{\bibinfo{person}{Shiwei Ren}, \bibinfo{person}{Tianci Wen},
+  \bibinfo{person}{Yongchun Fang}, {and} \bibinfo{person}{Biao Lu}.}
+  \bibinfo{year}{2025}\natexlab{}.
+\newblock \showarticletitle{FastGS: Training 3D Gaussian Splatting in 100
+  Seconds}. In \bibinfo{booktitle}{\emph{Proceedings of the Computer Vision and
+  Pattern Recognition Conference}}. \bibinfo{publisher}{IEEE},
+  \bibinfo{address}{Piscataway, NJ, USA}, \bibinfo{pages}{18540--18550}.
+\newblock
+
+
+\bibitem[Sch{\"o}nberger and Frahm(2016)]%
+        {colmap}
+\bibfield{author}{\bibinfo{person}{Johannes~L Sch{\"o}nberger} {and}
+  \bibinfo{person}{Jan-Michael Frahm}.} \bibinfo{year}{2016}\natexlab{}.
+\newblock \showarticletitle{Structure-from-motion revisited}. In
+  \bibinfo{booktitle}{\emph{Proceedings of the IEEE Conference on Computer
+  Vision and Pattern Recognition}}. \bibinfo{publisher}{IEEE},
+  \bibinfo{address}{Piscataway, NJ, USA}, \bibinfo{pages}{4104--4113}.
+\newblock
+
+
+\bibitem[Sch{\"o}ps et~al\mbox{.}(2019)]%
+        {Schops_2019_CVPR}
+\bibfield{author}{\bibinfo{person}{Thomas Sch{\"o}ps}, \bibinfo{person}{Torsten
+  Sattler}, {and} \bibinfo{person}{Marc Pollefeys}.}
+  \bibinfo{year}{2019}\natexlab{}.
+\newblock \showarticletitle{Bad {SLAM}: Bundle Adjusted Direct Visual {SLAM}}.
+  In \bibinfo{booktitle}{\emph{Proceedings of the IEEE/CVF Conference on
+  Computer Vision and Pattern Recognition}}. \bibinfo{publisher}{IEEE},
+  \bibinfo{address}{Piscataway, NJ, USA}, \bibinfo{pages}{134--144}.
+\newblock
+
+
+\bibitem[Sivic and Zisserman(2003)]%
+        {sivic2003video}
+\bibfield{author}{\bibinfo{person}{Josef Sivic} {and} \bibinfo{person}{Andrew
+  Zisserman}.} \bibinfo{year}{2003}\natexlab{}.
+\newblock \showarticletitle{Video Google: A text retrieval approach to object
+  matching in videos}. In \bibinfo{booktitle}{\emph{Proceedings of the IEEE
+  International Conference on Computer Vision}}, Vol.~\bibinfo{volume}{2}.
+  \bibinfo{publisher}{IEEE}, \bibinfo{address}{Piscataway, NJ, USA},
+  \bibinfo{pages}{1470--1477}.
+\newblock
+
+
+\bibitem[Smith et~al\mbox{.}(2024)]%
+        {smith2024flowmap}
+\bibfield{author}{\bibinfo{person}{Cameron Smith}, \bibinfo{person}{Lily Goli},
+  \bibinfo{person}{David Chen}, \bibinfo{person}{Adam~W Harley}, {and}
+  \bibinfo{person}{Leonidas Guibas}.} \bibinfo{year}{2024}\natexlab{}.
+\newblock \showarticletitle{FlowMap: High-Quality Camera Poses, Intrinsics, and
+  Depth via Gradient Descent}. In \bibinfo{booktitle}{\emph{European Conference
+  on Computer Vision}}. \bibinfo{publisher}{Springer}, \bibinfo{address}{Cham},
+  \bibinfo{pages}{345--363}.
+\newblock
+
+
+\bibitem[Sweeney(2015)]%
+        {sweeney2015theia}
+\bibfield{author}{\bibinfo{person}{Chris Sweeney}.}
+  \bibinfo{year}{2015}\natexlab{}.
+\newblock \showarticletitle{Theia: A fast and scalable structure-from-motion
+  library}. In \bibinfo{booktitle}{\emph{Proceedings of the 23rd ACM
+  International Conference on Multimedia}}. \bibinfo{publisher}{ACM},
+  \bibinfo{address}{New York, NY, USA}, \bibinfo{pages}{693--696}.
+\newblock
+
+
+\bibitem[Truong et~al\mbox{.}(2023)]%
+        {truong2023sparf}
+\bibfield{author}{\bibinfo{person}{Prune Truong}, \bibinfo{person}{Marie-Julie
+  Rakotosaona}, \bibinfo{person}{Fabian Manhardt}, {and}
+  \bibinfo{person}{Federico Tombari}.} \bibinfo{year}{2023}\natexlab{}.
+\newblock \showarticletitle{SPARF: Neural radiance fields from sparse and noisy
+  poses}. In \bibinfo{booktitle}{\emph{Proceedings of the IEEE/CVF Conference
+  on Computer Vision and Pattern Recognition}}. \bibinfo{publisher}{IEEE},
+  \bibinfo{address}{Piscataway, NJ, USA}, \bibinfo{pages}{4190--4200}.
+\newblock
+
+
+\bibitem[Wang et~al\mbox{.}(2025)]%
+        {wang2025vggt}
+\bibfield{author}{\bibinfo{person}{Jianyuan Wang}, \bibinfo{person}{Minghao
+  Chen}, \bibinfo{person}{Nikita Karaev}, \bibinfo{person}{Andrea
+  Tagliasacchi}, \bibinfo{person}{David Novotny}, \bibinfo{person}{Christian
+  Rupprecht}, {et~al\mbox{.}}} \bibinfo{year}{2025}\natexlab{}.
+\newblock \showarticletitle{VGGT: Visual Geometry Grounded Transformer}.
+\newblock \bibinfo{journal}{\emph{arXiv preprint arXiv:2503.11651}}
+  (\bibinfo{year}{2025}).
+\newblock
+
+
+\bibitem[Wang et~al\mbox{.}(2024a)]%
+        {wang2024vggsfm}
+\bibfield{author}{\bibinfo{person}{Jianyuan Wang}, \bibinfo{person}{Nikita
+  Karaev}, \bibinfo{person}{Christian Rupprecht}, {and} \bibinfo{person}{David
+  Novotny}.} \bibinfo{year}{2024}\natexlab{a}.
+\newblock \showarticletitle{VGGSfM: Visual Geometry Grounded Deep Structure
+  From Motion}. In \bibinfo{booktitle}{\emph{Proceedings of the IEEE/CVF
+  Conference on Computer Vision and Pattern Recognition}}.
+  \bibinfo{publisher}{IEEE}, \bibinfo{address}{Piscataway, NJ, USA},
+  \bibinfo{pages}{21686--21697}.
+\newblock
+
+
+\bibitem[Wang et~al\mbox{.}(2024b)]%
+        {wang2024dust3r}
+\bibfield{author}{\bibinfo{person}{Shuzhe Wang}, \bibinfo{person}{Vincent
+  Leroy}, \bibinfo{person}{Yohann Cabon}, \bibinfo{person}{Boris Chidlovskii},
+  {and} \bibinfo{person}{Jerome Revaud}.} \bibinfo{year}{2024}\natexlab{b}.
+\newblock \showarticletitle{DUSt3R: Geometric 3D Vision Made Easy}. In
+  \bibinfo{booktitle}{\emph{Proceedings of the IEEE/CVF Conference on Computer
+  Vision and Pattern Recognition}}. \bibinfo{publisher}{IEEE},
+  \bibinfo{address}{Piscataway, NJ, USA}, \bibinfo{pages}{20697--20709}.
+\newblock
+
+
+\bibitem[Wang et~al\mbox{.}(2021)]%
+        {wang2021nerfmm}
+\bibfield{author}{\bibinfo{person}{Zirui Wang}, \bibinfo{person}{Shangzhe Wu},
+  \bibinfo{person}{Weidi Xie}, \bibinfo{person}{Min Chen}, {and}
+  \bibinfo{person}{Victor~Adrian Prisacariu}.} \bibinfo{year}{2021}\natexlab{}.
+\newblock \showarticletitle{NeRF--: Neural radiance fields without known camera
+  parameters}.
+\newblock \bibinfo{journal}{\emph{arXiv preprint arXiv:2102.07064}}
+  (\bibinfo{year}{2021}).
+\newblock
+
+
+\bibitem[Wilson et~al\mbox{.}(2020)]%
+        {wilson2020distribution}
+\bibfield{author}{\bibinfo{person}{Kyle Wilson}, \bibinfo{person}{David
+  Bindel}, {and} \bibinfo{person}{Noah Snavely}.}
+  \bibinfo{year}{2020}\natexlab{}.
+\newblock \showarticletitle{On the distribution of minima in intrinsic-metric
+  rotation averaging}. In \bibinfo{booktitle}{\emph{Proceedings of the IEEE/CVF
+  Conference on Computer Vision and Pattern Recognition}}.
+  \bibinfo{publisher}{IEEE}, \bibinfo{address}{Piscataway, NJ, USA},
+  \bibinfo{pages}{11997--12006}.
+\newblock
+
+
+\bibitem[Xiong et~al\mbox{.}(2026)]%
+        {glosplat}
+\bibfield{author}{\bibinfo{person}{Tianyu Xiong}, \bibinfo{person}{Rui Li},
+  \bibinfo{person}{Linjie Li}, {and} \bibinfo{person}{Jiaqi Yang}.}
+  \bibinfo{year}{2026}\natexlab{}.
+\newblock \showarticletitle{GloSplat: Joint Pose-Appearance Optimization for
+  Faster and More Accurate 3D Reconstruction}.
+\newblock \bibinfo{journal}{\emph{arXiv preprint arXiv:2603.04847}}
+  (\bibinfo{year}{2026}).
+\newblock
+\urldef\tempurl%
+\url{https://arxiv.org/abs/2603.04847}
+\showURL{%
+\tempurl}
+
+
+\bibitem[Zhang et~al\mbox{.}(2018)]%
+        {zhang2018unreasonable}
+\bibfield{author}{\bibinfo{person}{Richard Zhang}, \bibinfo{person}{Phillip
+  Isola}, \bibinfo{person}{Alexei~A Efros}, \bibinfo{person}{Eli Shechtman},
+  {and} \bibinfo{person}{Oliver Wang}.} \bibinfo{year}{2018}\natexlab{}.
+\newblock \showarticletitle{The Unreasonable Effectiveness of Deep Features as
+  a Perceptual Metric}. In \bibinfo{booktitle}{\emph{Proceedings of the IEEE
+  Conference on Computer Vision and Pattern Recognition}}.
+  \bibinfo{publisher}{IEEE}, \bibinfo{address}{Piscataway, NJ, USA},
+  \bibinfo{pages}{586--595}.
+\newblock
+
+
+\end{thebibliography}

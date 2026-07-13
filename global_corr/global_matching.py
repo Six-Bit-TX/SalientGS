@@ -364,14 +364,14 @@ def _compute_log_prob_diag_gmm_torch(
 ) -> torch.Tensor:
     """
     Compute log-probabilities of descriptors under a diagonal GMM using PyTorch.
-    
+
     Args:
         descriptors: (N, D) tensor of descriptors
         weights: (K,) tensor of mixture weights
         means: (K, D) tensor of component means
         variances: (K, D) tensor of diagonal covariances
         eps: Small constant for numerical stability
-    
+
     Returns:
         (N, K) tensor of log-probabilities
     """
@@ -393,14 +393,14 @@ def _compute_responsibilities_torch(
     """
     Compute soft assignments (responsibilities) for descriptors under a diagonal GMM.
     Uses log-sum-exp trick for numerical stability.
-    
+
     Args:
         descriptors: (N, D) tensor of descriptors
         weights: (K,) tensor of mixture weights
         means: (K, D) tensor of component means
         variances: (K, D) tensor of diagonal covariances
         eps: Small constant for numerical stability
-    
+
     Returns:
         (N, K) tensor of responsibilities (soft assignments)
     """
@@ -422,7 +422,7 @@ def train_gmm_diagonal(
     """
     Train a diagonal-covariance GMM using EM on a random descriptor subset.
     Uses PyTorch for GPU acceleration.
-    
+
     Args:
         descriptors: (N, D) array of descriptors
         n_components: Number of GMM components
@@ -431,16 +431,16 @@ def train_gmm_diagonal(
         min_covar: Minimum variance (regularization)
         seed: Random seed for reproducibility
         batch_size: Batch size for EM updates
-    
+
     Returns:
         Dictionary with 'weights', 'means', 'variances' as numpy arrays
     """
     device = _get_device()
     logger.info(f"Training GMM on device: {device}")
-    
+
     rng = np.random.default_rng(seed)
     torch.manual_seed(seed)
-    
+
     descriptors = descriptors.astype(np.float32, copy=False)
     num_desc = descriptors.shape[0]
 
@@ -465,7 +465,7 @@ def train_gmm_diagonal(
 
     # Move sample data to GPU
     sample = torch.from_numpy(sample_np).to(device)
-    
+
     # Initialize GMM parameters on GPU
     init_idx = rng.choice(num_samples, size=n_components, replace=False)
     means = sample[init_idx].clone()
@@ -489,9 +489,9 @@ def train_gmm_diagonal(
         for start in range(0, num_samples, batch_size):
             end = min(start + batch_size, num_samples)
             batch = sample[start:end]
-            
+
             resp = _compute_responsibilities_torch(batch, weights, means, variances)
-            
+
             # Accumulate sufficient statistics
             sum_resp += resp.sum(dim=0)
             # (K, N) @ (N, D) -> (K, D)
@@ -523,21 +523,21 @@ def compute_fisher_vector(
     """
     Compute a Fisher Vector for a set of descriptors under a diagonal GMM.
     Uses PyTorch for GPU acceleration.
-    
+
     The Fisher Vector encodes first and second-order statistics of how
     the descriptors deviate from the GMM parameters.
-    
+
     Args:
         descriptors: (N, D) array of descriptors
         gmm: Dictionary with 'weights', 'means', 'variances'
         batch_size: Batch size for computation
         eps: Small constant for numerical stability
-    
+
     Returns:
         (2 * K * D,) Fisher Vector (power-normalized and L2-normalized)
     """
     device = _get_device()
-    
+
     weights_np = gmm["weights"]
     means_np = gmm["means"]
     variances_np = gmm["variances"]
@@ -548,12 +548,12 @@ def compute_fisher_vector(
 
     descriptors = descriptors.astype(np.float32, copy=False)
     num_desc = descriptors.shape[0]
-    
+
     # Move GMM parameters to GPU
     weights = torch.from_numpy(weights_np).to(device)
     means = torch.from_numpy(means_np).to(device)
     variances = torch.from_numpy(variances_np).to(device)
-    
+
     # Precompute normalization terms
     inv_sigma = 1.0 / torch.sqrt(variances + eps)
     inv_sigma2 = 1.0 / (variances + eps)
@@ -566,22 +566,22 @@ def compute_fisher_vector(
 
     # Process in batches
     desc_tensor = torch.from_numpy(descriptors).to(device)
-    
+
     for start in range(0, num_desc, batch_size):
         end = min(start + batch_size, num_desc)
         batch = desc_tensor[start:end]
-        
+
         # Compute responsibilities: (batch_size, K)
         resp = _compute_responsibilities_torch(batch, weights, means, variances, eps=eps)
-        
+
         # Compute deviations: (batch_size, K, D)
         diff = batch.unsqueeze(1) - means.unsqueeze(0)
-        
+
         # First-order (gradient w.r.t. means): weighted normalized deviations
         # (batch_size, K, D) weighted by (batch_size, K, 1)
         weighted_diff = resp.unsqueeze(2) * diff * inv_sigma.unsqueeze(0)
         sum_u += weighted_diff.sum(dim=0)
-        
+
         # Second-order (gradient w.r.t. variances): weighted squared deviations - 1
         weighted_sq = resp.unsqueeze(2) * ((diff * diff) * inv_sigma2.unsqueeze(0) - 1.0)
         sum_v += weighted_sq.sum(dim=0)
@@ -589,16 +589,16 @@ def compute_fisher_vector(
     # Normalize by number of descriptors and weight terms
     sum_u = sum_u / (num_desc * sqrt_weights.unsqueeze(1) + eps)
     sum_v = sum_v / (num_desc * sqrt_2_weights.unsqueeze(1) + eps)
-    
+
     # Concatenate first and second order terms
     fv = torch.cat([sum_u, sum_v], dim=0).reshape(-1)
 
     # Power normalization (signed square root)
     fv = torch.sign(fv) * torch.sqrt(torch.abs(fv) + eps)
-    
+
     # L2 normalization
     fv = fv / (torch.linalg.norm(fv) + eps)
-    
+
     return fv.cpu().numpy().astype(np.float32)
 
 

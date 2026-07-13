@@ -108,11 +108,11 @@ for data_path in "${datasets[@]}"; do
     dataset_name="${SCENE_TO_DATASET[$scene_name]}"
     scene_results_dir="$RESULTS_DIR/$scene_name"
     mkdir -p "$scene_results_dir"
-    
+
     echo "========================================"
     echo "Processing scene: $scene_name (Dataset: $dataset_name)"
     echo "========================================"
-    
+
     best_psnr=0
     best_ssim=0
     best_lpips=999
@@ -121,42 +121,42 @@ for data_path in "${datasets[@]}"; do
     best_joint_time=999999
     best_total_time=999999
     best_run=0
-    
+
     for run in $(seq 1 $NUM_RUNS); do
         echo "  Run $run/$NUM_RUNS..."
         log_file="$scene_results_dir/run_${run}.log"
         timing_file="$scene_results_dir/run_${run}_timing.txt"
-        
+
         # Clean up before run
         rm -rf "$data_path/database.db"
         rm -rf "$data_path/sparse/"
         rm -rf "$data_path/gsplat/"
-        
+
         # Initialize log file
         echo "=== Run $run ===" > "$log_file"
         echo "Started at: $(date)" >> "$log_file"
         echo "" >> "$log_file"
-        
+
         # Time the entire pipeline
         total_start_time=$(date +%s.%N)
-        
+
         # Stage 1: Global matching (sgs-feat)
         echo "  Stage 1/3: sgs-feat (Global matching)..."
         matching_start=$(date +%s.%N)
         {
-            echo "=== Stage 1: sgs-feat (Global Matching) ===" 
+            echo "=== Stage 1: sgs-feat (Global Matching) ==="
             CUDA_VISIBLE_DEVICES=0 sgs-feat --image_dir "$data_path/images" --output_dir "$data_path" 2>&1
         } >> "$log_file" 2>&1
         matching_end=$(date +%s.%N)
         matching_time=$(echo "$matching_end - $matching_start" | bc)
         echo "    Matching time: ${matching_time}s"
-        
+
         # Stage 2: FastMap (sgs-sfm)
         echo "  Stage 2/3: sgs-sfm (FastMap)..."
         fastmap_start=$(date +%s.%N)
         {
             echo ""
-            echo "=== Stage 2: sgs-sfm (FastMap) ===" 
+            echo "=== Stage 2: sgs-sfm (FastMap) ==="
             CUDA_VISIBLE_DEVICES=0 sgs-sfm --headless \
                 --database "$data_path/database.db" \
                 --image_dir "$data_path/images" \
@@ -165,26 +165,26 @@ for data_path in "${datasets[@]}"; do
         fastmap_end=$(date +%s.%N)
         fastmap_time=$(echo "$fastmap_end - $fastmap_start" | bc)
         echo "    FastMap time: ${fastmap_time}s"
-        
+
         # Stage 3: Joint training (sgs-joint)
         echo "  Stage 3/3: sgs-joint..."
         joint_start=$(date +%s.%N)
         {
             echo ""
-            echo "=== Stage 3: sgs-joint ===" 
+            echo "=== Stage 3: sgs-joint ==="
             CUDA_VISIBLE_DEVICES=0 sgs-joint --data_path "$data_path"
         } >> "$log_file" 2>&1
         joint_end=$(date +%s.%N)
         joint_time=$(echo "$joint_end - $joint_start" | bc)
         echo "    Joint time: ${joint_time}s"
-        
+
         total_end_time=$(date +%s.%N)
         total_time=$(echo "$total_end_time - $total_start_time" | bc)
-        
+
         # Extract metrics
         metrics=$(extract_metrics "$log_file")
         read -r psnr ssim lpips <<< "$metrics"
-        
+
         # Save timing info
         {
             echo ""
@@ -194,7 +194,7 @@ for data_path in "${datasets[@]}"; do
             echo "Joint: ${joint_time}s"
             echo "Total Time: ${total_time}s"
         } >> "$log_file"
-        
+
         # Also save timing to separate file for easy parsing
         {
             echo "matching_time=$matching_time"
@@ -205,10 +205,10 @@ for data_path in "${datasets[@]}"; do
             echo "ssim=$ssim"
             echo "lpips=$lpips"
         } > "$timing_file"
-        
+
         echo "    PSNR: $psnr, SSIM: $ssim, LPIPS: $lpips"
         echo "    Total time: ${total_time}s (Matching: ${matching_time}s, FastMap: ${fastmap_time}s, Joint: ${joint_time}s)"
-        
+
         # Check if this run is better (prioritize PSNR)
         if [ -n "$psnr" ] && [ -n "$ssim" ] && [ -n "$lpips" ]; then
             is_better=$(awk -v p1="$psnr" -v p2="$best_psnr" 'BEGIN { print (p1 > p2) ? 1 : 0 }')
@@ -224,7 +224,7 @@ for data_path in "${datasets[@]}"; do
             fi
         fi
     done
-    
+
     # Store best results for this scene
     BEST_PSNR[$scene_name]="$best_psnr"
     BEST_SSIM[$scene_name]="$best_ssim"
@@ -233,7 +233,7 @@ for data_path in "${datasets[@]}"; do
     BEST_FASTMAP_TIME[$scene_name]="$best_fastmap_time"
     BEST_JOINT_TIME[$scene_name]="$best_joint_time"
     BEST_TOTAL_TIME[$scene_name]="$best_total_time"
-    
+
     # Add to dataset aggregation
     if [ -n "${DATASET_PSNR[$dataset_name]}" ]; then
         DATASET_PSNR[$dataset_name]="${DATASET_PSNR[$dataset_name]} $best_psnr"
@@ -253,7 +253,7 @@ for data_path in "${datasets[@]}"; do
         DATASET_TOTAL_TIME[$dataset_name]="$best_total_time"
     fi
     DATASET_COUNT[$dataset_name]=$((${DATASET_COUNT[$dataset_name]} + 1))
-    
+
     # Write scene summary
     {
         echo "Scene: $scene_name (Dataset: $dataset_name)"
@@ -268,12 +268,12 @@ for data_path in "${datasets[@]}"; do
         echo "    Total Time:      ${best_total_time}s"
         echo ""
     } >> "$SUMMARY_FILE"
-    
+
     echo "  Best result (Run $best_run):"
     echo "    PSNR=$best_psnr, SSIM=$best_ssim, LPIPS=$best_lpips"
     echo "    Time: Total=${best_total_time}s (Matching=${best_matching_time}s, FastMap=${best_fastmap_time}s, Joint=${best_joint_time}s)"
     echo ""
-    
+
     # Sleep between scenes to allow GPU to cool down
     echo "  Sleeping for 60 seconds before next scene..."
     sleep 60
@@ -299,7 +299,7 @@ for dataset_name in "Mip360" "tnt" "db"; do
         avg_joint=$(echo "${DATASET_JOINT_TIME[$dataset_name]}" | awk '{ sum=0; for(i=1;i<=NF;i++) sum+=$i; print sum/NF }')
         avg_total=$(echo "${DATASET_TOTAL_TIME[$dataset_name]}" | awk '{ sum=0; for(i=1;i<=NF;i++) sum+=$i; print sum/NF }')
         sum_total=$(echo "${DATASET_TOTAL_TIME[$dataset_name]}" | awk '{ sum=0; for(i=1;i<=NF;i++) sum+=$i; print sum }')
-        
+
         {
             echo "Dataset: $dataset_name ($count scenes)"
             echo "  Metrics (Average):"
@@ -314,7 +314,7 @@ for dataset_name in "Mip360" "tnt" "db"; do
             echo "  Total Time (all scenes): ${sum_total}s"
             echo ""
         } >> "$SUMMARY_FILE"
-        
+
         echo "Dataset $dataset_name ($count scenes):"
         echo "  Avg PSNR=$avg_psnr, Avg SSIM=$avg_ssim, Avg LPIPS=$avg_lpips"
         echo "  Avg Time: Total=${avg_total}s (Matching=${avg_matching}s, FastMap=${avg_fastmap}s, Joint=${avg_joint}s)"
@@ -329,7 +329,7 @@ done
     echo ""
     printf "%-15s %-10s %-10s %-10s %-10s\n" "Scene" "Dataset" "PSNR" "SSIM" "LPIPS"
     printf "%-15s %-10s %-10s %-10s %-10s\n" "---------------" "----------" "----------" "----------" "----------"
-    
+
     for data_path in "${datasets[@]}"; do
         scene_name=$(basename "$data_path")
         dataset_name="${SCENE_TO_DATASET[$scene_name]}"
@@ -351,7 +351,7 @@ done
     echo ""
     printf "%-15s %-10s %-12s %-12s %-12s %-12s\n" "Scene" "Dataset" "Matching" "FastMap" "Joint" "Total"
     printf "%-15s %-10s %-12s %-12s %-12s %-12s\n" "---------------" "----------" "------------" "------------" "------------" "------------"
-    
+
     for data_path in "${datasets[@]}"; do
         scene_name=$(basename "$data_path")
         dataset_name="${SCENE_TO_DATASET[$scene_name]}"

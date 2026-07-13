@@ -26,6 +26,6 @@ for data_path in ${datasets[@]}; do
         --database $data_path/database.db \
         --image_dir $data_path/images \
         --output_dir $data_path
-    rm -rf $data_path/gsplat/ 
+    rm -rf $data_path/gsplat/
     sgs-joint --data_path $data_path
 done

@@ -1,0 +1,258 @@
+%%% -*-BibTeX-*-
+%%% Do NOT edit. File created by BibTeX with style
+%%% ACM-Reference-Format-Journals [18-Jan-2012].
+
+\begin{thebibliography}{15}
+
+%%% ====================================================================
+%%% NOTE TO THE USER: you can override these defaults by providing
+%%% customized versions of any of these macros before the \bibliography
+%%% command.  Each of them MUST provide its own final punctuation,
+%%% except for \shownote{} and \showURL{}.  The latter two
+%%% do not use final punctuation, in order to avoid confusing it with
+%%% the Web address.
+%%%
+%%% To suppress output of a particular field, define its macro to expand
+%%% to an empty string, or better, \unskip, like this:
+%%%
+%%% \newcommand{\showURL}[1]{\unskip}   % LaTeX syntax
+%%%
+%%% \def \showURL #1{\unskip}           % plain TeX syntax
+%%%
+%%% ====================================================================
+
+\ifx \showCODEN    \undefined \def \showCODEN     #1{\unskip}     \fi
+\ifx \showISBNx    \undefined \def \showISBNx     #1{\unskip}     \fi
+\ifx \showISBNxiii \undefined \def \showISBNxiii  #1{\unskip}     \fi
+\ifx \showISSN     \undefined \def \showISSN      #1{\unskip}     \fi
+\ifx \showLCCN     \undefined \def \showLCCN      #1{\unskip}     \fi
+\ifx \shownote     \undefined \def \shownote      #1{#1}          \fi
+\ifx \showarticletitle \undefined \def \showarticletitle #1{#1}   \fi
+\ifx \showURL      \undefined \def \showURL       {\relax}        \fi
+% The following commands are used for tagged output and should be
+% invisible to TeX
+\providecommand\bibfield[2]{#2}
+\providecommand\bibinfo[2]{#2}
+\providecommand\natexlab[1]{#1}
+\providecommand\showeprint[2][]{arXiv:#2}
+
+\bibitem[Barron et~al\mbox{.}(2022)]%
+        {barron2022mip}
+\bibfield{author}{\bibinfo{person}{Jonathan~T Barron}, \bibinfo{person}{Ben
+  Mildenhall}, \bibinfo{person}{Dor Verbin}, \bibinfo{person}{Pratul~P
+  Srinivasan}, {and} \bibinfo{person}{Peter Hedman}.}
+  \bibinfo{year}{2022}\natexlab{}.
+\newblock \showarticletitle{Mip-nerf 360: Unbounded anti-aliased neural
+  radiance fields}. In \bibinfo{booktitle}{\emph{Proceedings of the IEEE/CVF
+  Conference on Computer Vision and Pattern Recognition}}.
+  \bibinfo{publisher}{IEEE}, \bibinfo{address}{Piscataway, NJ, USA},
+  \bibinfo{pages}{5470--5479}.
+\newblock
+
+
+\bibitem[Chen et~al\mbox{.}(2025)]%
+        {chen2024pgsr}
+\bibfield{author}{\bibinfo{person}{Danpeng Chen}, \bibinfo{person}{Hai Li},
+  \bibinfo{person}{Weicai Ye}, \bibinfo{person}{Yifan Wang},
+  \bibinfo{person}{Weijian Xie}, \bibinfo{person}{Shangjin Zhai},
+  \bibinfo{person}{Nan Wang}, \bibinfo{person}{Haomin Liu},
+  \bibinfo{person}{Hujun Bao}, {and} \bibinfo{person}{Guofeng Zhang}.}
+  \bibinfo{year}{2025}\natexlab{}.
+\newblock \showarticletitle{{PGSR}: Planar-Based {Gaussian} Splatting for
+  Efficient and High-Fidelity Surface Reconstruction}.
+\newblock \bibinfo{journal}{\emph{IEEE Transactions on Visualization and
+  Computer Graphics}} \bibinfo{volume}{31}, \bibinfo{number}{12}
+  (\bibinfo{year}{2025}), \bibinfo{pages}{6100--6111}.
+\newblock
+\href{https://doi.org/10.1109/TVCG.2024.3494046}{doi:\nolinkurl{10.1109/TVCG.2024.3494046}}
+
+
+\bibitem[Chen et~al\mbox{.}(2024)]%
+        {vcrgaus2024}
+\bibfield{author}{\bibinfo{person}{Hanlin Chen}, \bibinfo{person}{Fangyin Wei},
+  \bibinfo{person}{Chen Li}, \bibinfo{person}{Tianxin Huang},
+  \bibinfo{person}{Yunsong Wang}, {and} \bibinfo{person}{Gim~Hee Lee}.}
+  \bibinfo{year}{2024}\natexlab{}.
+\newblock \showarticletitle{{VCR-GauS}: View Consistent Depth-Normal
+  Regularizer for {Gaussian} Surface Reconstruction}. In
+  \bibinfo{booktitle}{\emph{Advances in Neural Information Processing
+  Systems}}, Vol.~\bibinfo{volume}{37}. \bibinfo{publisher}{Curran Associates,
+  Inc.}, \bibinfo{address}{Red Hook, NY, USA}.
+\newblock
+
+
+\bibitem[Chen and Lee(2024)]%
+        {chen2024dogs}
+\bibfield{author}{\bibinfo{person}{Yu Chen} {and} \bibinfo{person}{Gim~Hee
+  Lee}.} \bibinfo{year}{2024}\natexlab{}.
+\newblock \showarticletitle{{DOGS}: Distributed-Oriented {Gaussian} Splatting
+  for Large-Scale {3D} Reconstruction Via {Gaussian} Consensus}. In
+  \bibinfo{booktitle}{\emph{Advances in Neural Information Processing
+  Systems}}, Vol.~\bibinfo{volume}{37}. \bibinfo{publisher}{Curran Associates,
+  Inc.}, \bibinfo{address}{Red Hook, NY, USA}.
+\newblock
+
+
+\bibitem[Gao et~al\mbox{.}(2025)]%
+        {gao2025citygsx}
+\bibfield{author}{\bibinfo{person}{Yuanyuan Gao}, \bibinfo{person}{Hao Li},
+  \bibinfo{person}{Jiaqi Chen}, \bibinfo{person}{Zhengyu Zou},
+  \bibinfo{person}{Zhihang Zhong}, \bibinfo{person}{Dingwen Zhang},
+  \bibinfo{person}{Xiao Sun}, {and} \bibinfo{person}{Junwei Han}.}
+  \bibinfo{year}{2025}\natexlab{}.
+\newblock \showarticletitle{{CityGS-X}: A Scalable Architecture for Efficient
+  and Geometrically Accurate Large-Scale Scene Reconstruction}. In
+  \bibinfo{booktitle}{\emph{Proceedings of the IEEE/CVF International
+  Conference on Computer Vision}}. \bibinfo{publisher}{IEEE},
+  \bibinfo{address}{Piscataway, NJ, USA}.
+\newblock
+
+
+\bibitem[Gu{\'e}don and Lepetit(2024)]%
+        {sugar2024}
+\bibfield{author}{\bibinfo{person}{Antoine Gu{\'e}don} {and}
+  \bibinfo{person}{Vincent Lepetit}.} \bibinfo{year}{2024}\natexlab{}.
+\newblock \showarticletitle{{SuGaR}: Surface-Aligned {Gaussian} Splatting for
+  Efficient {3D} Mesh Reconstruction and High-Quality Mesh Rendering}. In
+  \bibinfo{booktitle}{\emph{Proceedings of the IEEE/CVF Conference on Computer
+  Vision and Pattern Recognition}}. \bibinfo{publisher}{IEEE},
+  \bibinfo{address}{Piscataway, NJ, USA}, \bibinfo{pages}{5354--5363}.
+\newblock
+
+
+\bibitem[Kerbl et~al\mbox{.}(2023)]%
+        {kerbl3Dgaussians}
+\bibfield{author}{\bibinfo{person}{Bernhard Kerbl}, \bibinfo{person}{Georgios
+  Kopanas}, \bibinfo{person}{Thomas Leimk{\"u}hler}, {and}
+  \bibinfo{person}{George Drettakis}.} \bibinfo{year}{2023}\natexlab{}.
+\newblock \showarticletitle{3D Gaussian Splatting for Real-Time Radiance Field
+  Rendering}.
+\newblock \bibinfo{journal}{\emph{ACM Transactions on Graphics}}
+  \bibinfo{volume}{42}, \bibinfo{number}{4}, Article \bibinfo{articleno}{139}
+  (\bibinfo{date}{July} \bibinfo{year}{2023}), \bibinfo{numpages}{14}~pages.
+\newblock
+\urldef\tempurl%
+\url{https://repo-sam.inria.fr/fungraph/3d-gaussian-splatting/}
+\showURL{%
+\tempurl}
+
+
+\bibitem[Li et~al\mbox{.}(2026)]%
+        {urbangs}
+\bibfield{author}{\bibinfo{person}{Changbai Li}, \bibinfo{person}{Haodong Zhu},
+  \bibinfo{person}{Hanlin Chen}, \bibinfo{person}{Xiuping Liang},
+  \bibinfo{person}{Tongfei Chen}, \bibinfo{person}{Shuwei Shao},
+  \bibinfo{person}{Linlin Yang}, \bibinfo{person}{Huobin Tan}, {and}
+  \bibinfo{person}{Baochang Zhang}.} \bibinfo{year}{2026}\natexlab{}.
+\newblock \showarticletitle{UrbanGS: Efficient and Scalable Architecture for
+  Geometrically Accurate Large-Scene Reconstruction}. In
+  \bibinfo{booktitle}{\emph{International Conference on Learning
+  Representations}}.
+\newblock
+\urldef\tempurl%
+\url{https://openreview.net/forum?id=L3utaw6SD9}
+\showURL{%
+\tempurl}
+
+
+\bibitem[Li et~al\mbox{.}(2023)]%
+        {li2023neuralangelo}
+\bibfield{author}{\bibinfo{person}{Zhaoshuo Li}, \bibinfo{person}{Thomas
+  M{\"u}ller}, \bibinfo{person}{Alex Evans}, \bibinfo{person}{Russell~H.
+  Taylor}, \bibinfo{person}{Mathias Unberath}, \bibinfo{person}{Ming-Yu Liu},
+  {and} \bibinfo{person}{Chen-Hsuan Lin}.} \bibinfo{year}{2023}\natexlab{}.
+\newblock \showarticletitle{Neuralangelo: High-Fidelity Neural Surface
+  Reconstruction}. In \bibinfo{booktitle}{\emph{Proceedings of the IEEE/CVF
+  Conference on Computer Vision and Pattern Recognition}}.
+  \bibinfo{publisher}{IEEE}, \bibinfo{address}{Piscataway, NJ, USA},
+  \bibinfo{pages}{8456--8465}.
+\newblock
+
+
+\bibitem[Lin et~al\mbox{.}(2024)]%
+        {lin2024vastgaussian}
+\bibfield{author}{\bibinfo{person}{Jiaqi Lin}, \bibinfo{person}{Zhihao Li},
+  \bibinfo{person}{Xiao Tang}, \bibinfo{person}{Jianzhuang Liu},
+  \bibinfo{person}{Shiyong Liu}, \bibinfo{person}{Jiayue Liu},
+  \bibinfo{person}{Yangdi Lu}, \bibinfo{person}{Xiaofei Wu},
+  \bibinfo{person}{Songcen Xu}, \bibinfo{person}{Youliang Yan}, {and}
+  \bibinfo{person}{Wenming Yang}.} \bibinfo{year}{2024}\natexlab{}.
+\newblock \showarticletitle{VastGaussian: Vast {3D} Gaussians for Large Scene
+  Reconstruction}. In \bibinfo{booktitle}{\emph{Proceedings of the IEEE/CVF
+  Conference on Computer Vision and Pattern Recognition}}.
+  \bibinfo{publisher}{IEEE}, \bibinfo{address}{Piscataway, NJ, USA}.
+\newblock
+
+
+\bibitem[Liu et~al\mbox{.}(2024)]%
+        {liu2024citygaussian}
+\bibfield{author}{\bibinfo{person}{Yang Liu}, \bibinfo{person}{He Guan},
+  \bibinfo{person}{Chuanchen Luo}, \bibinfo{person}{Lue Fan},
+  \bibinfo{person}{Naiyan Wang}, \bibinfo{person}{Junran Peng}, {and}
+  \bibinfo{person}{Zhaoxiang Zhang}.} \bibinfo{year}{2024}\natexlab{}.
+\newblock \showarticletitle{CityGaussian: Real-time High-quality Large-Scale
+  Scene Rendering with Gaussians}. In \bibinfo{booktitle}{\emph{European
+  Conference on Computer Vision}}. \bibinfo{publisher}{Springer},
+  \bibinfo{address}{Cham}.
+\newblock
+
+
+\bibitem[Liu et~al\mbox{.}(2025)]%
+        {liu2025citygaussianv2}
+\bibfield{author}{\bibinfo{person}{Yang Liu}, \bibinfo{person}{Chuanchen Luo},
+  \bibinfo{person}{Zhongkai Mao}, \bibinfo{person}{Junran Peng}, {and}
+  \bibinfo{person}{Zhaoxiang Zhang}.} \bibinfo{year}{2025}\natexlab{}.
+\newblock \showarticletitle{CityGaussianV2: Efficient and Geometrically
+  Accurate Reconstruction for Large-Scale Scenes}. In
+  \bibinfo{booktitle}{\emph{International Conference on Learning
+  Representations}}.
+\newblock
+\urldef\tempurl%
+\url{https://openreview.net/forum?id=a3ptUbuzbW}
+\showURL{%
+\tempurl}
+
+
+\bibitem[Mi and Xu(2023)]%
+        {mi2023switchnerf}
+\bibfield{author}{\bibinfo{person}{Zhenxing Mi} {and} \bibinfo{person}{Dan
+  Xu}.} \bibinfo{year}{2023}\natexlab{}.
+\newblock \showarticletitle{Switch-{NeRF}: Learning Scene Decomposition with
+  Mixture of Experts for Large-scale Neural Radiance Fields}. In
+  \bibinfo{booktitle}{\emph{International Conference on Learning
+  Representations}}.
+\newblock
+\urldef\tempurl%
+\url{https://openreview.net/forum?id=PQ2zoIZqvm}
+\showURL{%
+\tempurl}
+
+
+\bibitem[Turki et~al\mbox{.}(2022)]%
+        {turki2022meganerf}
+\bibfield{author}{\bibinfo{person}{Haithem Turki}, \bibinfo{person}{Deva
+  Ramanan}, {and} \bibinfo{person}{Mahadev Satyanarayanan}.}
+  \bibinfo{year}{2022}\natexlab{}.
+\newblock \showarticletitle{Mega-{NeRF}: Scalable Construction of Large-Scale
+  {NeRF}s for Virtual Fly-Throughs}. In \bibinfo{booktitle}{\emph{Proceedings
+  of the IEEE/CVF Conference on Computer Vision and Pattern Recognition}}.
+  \bibinfo{publisher}{IEEE}, \bibinfo{address}{Piscataway, NJ, USA},
+  \bibinfo{pages}{12922--12931}.
+\newblock
+
+
+\bibitem[Wang et~al\mbox{.}(2021)]%
+        {wang2021neus}
+\bibfield{author}{\bibinfo{person}{Peng Wang}, \bibinfo{person}{Lingjie Liu},
+  \bibinfo{person}{Yuan Liu}, \bibinfo{person}{Christian Theobalt},
+  \bibinfo{person}{Taku Komura}, {and} \bibinfo{person}{Wenping Wang}.}
+  \bibinfo{year}{2021}\natexlab{}.
+\newblock \showarticletitle{{NeuS}: Learning Neural Implicit Surfaces by Volume
+  Rendering for Multi-view Reconstruction}. In
+  \bibinfo{booktitle}{\emph{Advances in Neural Information Processing
+  Systems}}, Vol.~\bibinfo{volume}{34}. \bibinfo{publisher}{Curran Associates,
+  Inc.}, \bibinfo{address}{Red Hook, NY, USA}.
+\newblock
+
+
+\end{thebibliography}

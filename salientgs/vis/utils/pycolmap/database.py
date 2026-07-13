@@ -317,7 +317,7 @@ def main(args):
     assert np.all(matches[(1, 2)] == m12)
     assert np.all(matches[(2, 3)] == m23)
     assert np.all(matches[(3, 4)] == m34)
-    
+
     #
     # clean up
     #

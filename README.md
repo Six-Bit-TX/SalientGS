@@ -1,176 +1,81 @@
 # SalientGS: Unified SfM-to-3DGS with Importance-Guided MCMC Gaussian Allocation
 
-**SalientGS** is a unified SfM-to-3DGS pipeline whose central contribution is *importance-guided MCMC Gaussian allocation*---a method that aggregates multi-view residuals into per-Gaussian underfit and redundancy signals, defining a smooth importance-weighted sampling distribution that biases both birth and relocation within the MCMC framework toward underfit regions, reallocating capacity from well-fit areas without altering the underlying SGLD dynamics. SalientGS achieves end-to-end reconstruction in ~15 minutes with state-of-the-art perceptual quality (LPIPS) without COLMAP preprocessing.
+SalientGS is an end-to-end pipeline for reconstructing 3D Gaussian Splatting (3DGS) scenes from unordered images. It combines Fisher Vector retrieval with MST connectivity, first-order SfM, joint pose-appearance refinement, and importance-guided MCMC Gaussian allocation.
 
-## Key Contributions
+Project page: <https://six-bit-tx.github.io/SalientGS/>
 
-- **Importance-Guided MCMC Gaussian Allocation**: A heuristic allocation layer atop 3DGS-MCMC that biases both birth and relocation toward underfit regions via multi-view error attribution, yielding +0.17 dB PSNR and 12% LPIPS improvement over vanilla MCMC at 1.5M Gaussians.
+Paper: [`paper/main.pdf`](paper/main.pdf) · Supplementary: [`paper/supplementary.pdf`](paper/supplementary.pdf)
 
-- **Unified SfM-to-3DGS Pipeline**: End-to-end architecture coupling fast SfM initialization with joint pose-appearance refinement under photometric and reprojection losses.
+## Highlights
 
-- **Efficient Matching and First-Order SfM**: Fisher Vector retrieval with MST connectivity guarantees and first-order epipolar adjustment, achieving near-linear scaling and up to 23x SfM speedup over COLMAP.
-
-- **Joint Pose Optimization**: Combines photometric rendering losses with a reprojection-based bundle adjustment loss on triangulated feature tracks, enabling accurate pose refinement while preventing degenerate solutions.
+- Importance-guided MCMC reallocates a fixed Gaussian budget toward persistent multi-view underfit regions.
+- The unified pipeline jointly refines SfM poses and Gaussian appearance with photometric and reprojection losses.
+- Fisher Vector retrieval plus MST connectivity provides a fast unordered-image front end.
+- The released implementation includes the FastMap CUDA extension, evaluation scripts, and command-line entry points.
 
 ## Installation
 
+The released code targets Python 3.10 or newer, PyTorch with CUDA support, COLMAP for SIFT feature extraction, and [`gsplat`](https://github.com/nerfstudio-project/gsplat).
+
 ```bash
-# Clone the repository
-git clone https://github.com/your-repo/SalientGS.git
+git clone https://github.com/Six-Bit-TX/SalientGS.git
 cd SalientGS
 
-# Install FastMap (CUDA extension for first-order SfM)
 pip install -e fastmap/
-
-# Install SalientGS in development mode
 pip install -e .
 ```
 
-### Dependencies
-
-- Python >= 3.10
-- PyTorch with CUDA support
-- COLMAP (for SIFT feature extraction in `sgs-feat`)
-- [gsplat](https://github.com/nerfstudio-project/gsplat) for 3DGS rendering
-
-Additional dependencies are listed in `pyproject.toml`.
+The Python package dependencies are pinned or listed in [`pyproject.toml`](pyproject.toml). The FastMap extension requires a CUDA-capable build environment.
 
 ## Usage
-
-SalientGS provides three command-line tools corresponding to each pipeline stage:
-
-### 1. Feature Extraction and Matching (`sgs-feat`)
-
-```bash
-sgs-feat --image_dir /path/to/dataset/images --output_dir /path/to/dataset
-```
-
-### 2. First-Order SfM (`sgs-sfm`)
-
-```bash
-sgs-sfm --headless --database /path/to/dataset/database.db \
-    --image_dir /path/to/dataset/images --output_dir /path/to/dataset
-```
-
-### 3. Joint 3DGS Training (`sgs-joint`)
-
-```bash
-sgs-joint --data_path /path/to/dataset
-```
-
-### Full Pipeline Example
 
 ```bash
 DATA=/path/to/dataset
 
-sgs-feat --image_dir $DATA/images --output_dir $DATA
-sgs-sfm --headless --database $DATA/database.db --image_dir $DATA/images --output_dir $DATA
-sgs-joint --data_path $DATA
+# Feature extraction and Fisher Vector retrieval
+sgs-feat --image_dir "$DATA/images" --output_dir "$DATA"
 
-# Or use the provided script
-bash scripts/run_fast.sh
+# First-order SfM
+sgs-sfm --headless \
+  --database "$DATA/database.db" \
+  --image_dir "$DATA/images" \
+  --output_dir "$DATA"
+
+# Joint 3DGS training
+sgs-joint --data_path "$DATA"
 ```
 
-## Pipeline Overview
+The expected dataset layout is:
 
-```
-Input Images
-     |
-     v
-+-------------------------------------+
-|  Fisher Vector + MST Matching       |  <- sgs-feat
-|  - SIFT features (COLMAP GPU)       |
-|  - Fisher Vector top-k retrieval    |
-|  - MST connectivity guarantees      |
-|  - RANSAC geometric verification    |
-+-------------------------------------+
-     |
-     v
-+-------------------------------------+
-|  First-Order SfM                    |  <- sgs-sfm
-|  - Rotation averaging               |
-|  - Translation estimation           |
-|  - Epipolar adjustment (fused CUDA) |
-+-------------------------------------+
-     |
-     v
-+-------------------------------------+
-|  Joint 3DGS Training                |  <- sgs-joint
-|  - Importance-guided MCMC alloc.    |
-|  - Photometric loss (L1 + SSIM)     |
-|  - BA loss (reprojection)           |
-|  - Continuous pose refinement       |
-+-------------------------------------+
-     |
-     v
-Output: Optimized Gaussians + Refined Poses
-```
-
-## Data Format
-
-SalientGS expects the following directory structure:
-
-```
+```text
 dataset/
-├── images/           # Input images (jpg, png)
-├── database.db       # Generated by sgs-feat
-└── sparse/0/         # SfM reconstruction output
+├── images/
+├── database.db
+└── sparse/0/
     ├── cameras.txt
     ├── images.txt
     └── points3D.txt
 ```
 
-## Benchmarks
+The [`scripts/`](scripts/) directory contains benchmark, runtime, ETH3D pose-evaluation, and GLOMAP comparison scripts.
 
-All experiments use a single NVIDIA RTX 6000 Ada GPU. Times include all preprocessing (no separate COLMAP step). Gaussian budget is capped at 1.5M.
+## Reproducibility notes
 
-### Quantitative Comparison (end-to-end, including preprocessing time for all methods)
+The paper reports a 1.5M Gaussian budget, 30K joint-training iterations, Fisher Vector retrieval with 64 GMM components and top-20 neighbors, robust score quantiles `(0.05, 0.90)`, an importance threshold of 5, redundancy threshold of 0.9, opacity mixing of 0.05, and 10 views per score update. Scores begin after a 3K pose warmup and are recomputed every 500 iterations.
 
-| Method | Mip-NeRF 360 ||| Tanks & Temples ||| Deep Blending |||
-|--------|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|
-| | PSNR | SSIM | LPIPS | PSNR | SSIM | LPIPS | PSNR | SSIM | LPIPS |
-| 3DGS | 27.53 | 0.812 | 0.221 | 23.71 | 0.850 | 0.170 | 29.71 | 0.903 | 0.241 |
-| 3DGS-MCMC | 28.01 | 0.835 | 0.186 | 24.40 | 0.869 | 0.149 | 29.78 | 0.912 | 0.237 |
-| FastGS-big | 27.93 | 0.820 | 0.216 | 24.39 | 0.855 | 0.175 | **30.12** | 0.907 | 0.243 |
-| **SalientGS** | **28.89** | **0.857** | **0.131** | **24.87** | **0.879** | **0.084** | 29.99 | **0.921** | **0.144** |
-
-### End-to-End Time (minutes)
-
-| Method | Mip-NeRF 360 | Deep Blending | Tanks & Temples |
-|--------|:----:|:----:|:----:|
-| 3DGS (+ COLMAP) | 31.93 | 30.77 | 22.34 |
-| FastGS-big (+ COLMAP) | 14.58 | 13.00 | 13.03 |
-| VGGT-X | 73.71 | 57.24 | 61.12 |
-| **SalientGS** | **15.39** | **14.84** | **15.71** |
-
-### SfM Runtime (Courthouse scene, seconds)
-
-| # Images | COLMAP | MASt3R | VGGT-X | SalientGS | Speedup |
-|:--------:|:------:|:------:|:------:|:---------:|:-------:|
-| 250 | 644.6 | 312.2 | 53.9 | **47.8** | 13.5x |
-| 500 | 1165.0 | 638.0 | 113.3 | **98.0** | 11.9x |
-| 750 | 2226.3 | 978.5 | 249.6 | **138.5** | 16.1x |
-| 1000 | 4349.2 | 1308.2 | 398.9 | **186.1** | 23.4x |
-
-### Gaussian Budget Efficiency (Mip-NeRF 360, PSNR)
-
-| Budget | Vanilla MCMC | Guided MCMC | Gain |
-|:------:|:----:|:----:|:----:|
-| 500K | 28.19 | 28.46 | +0.27 |
-| 1.0M | 28.59 | 28.81 | +0.22 |
-| 1.5M | 28.72 | **28.89** | +0.17 |
-| 2.0M | 28.80 | 28.93 | +0.13 |
-| 3.0M | 28.88 | **28.97** | +0.09 |
-
-Importance-guided MCMC at 1.0M Gaussians (28.81 dB) surpasses vanilla MCMC at 1.5M (28.72 dB), achieving equivalent quality with 33% fewer Gaussians.
-
-## Implementation Details
-
-- Fisher Vector encoding: GMM with K=64 components on SIFT descriptors, top-k=20 retrieval
-- Gaussian budget cap: 1.5M
-- Importance-guided MCMC: robust normalization quantiles (0.05, 0.90), importance threshold tau_imp=5, redundancy threshold tau_red=0.9, opacity mixing lambda_mix=0.05, K=10 views
-- Joint training: 30K iterations, lambda_BA=0.01, lambda_s=0.2
+Datasets, pretrained weights, and generated experiment outputs are not included in this repository. Please follow the licenses and terms of the respective datasets and third-party dependencies.
 
 ## License
 
-This project is licensed under CC-BY-NC-4.0. See [LICENSE](LICENSE) for details.
+The code in this repository is released under [CC BY-NC 4.0](LICENSE). Third-party components retain their own licenses.
+
+## Citation
+
+```bibtex
+@inproceedings{xiong2026salientgs,
+  author    = {Tianyu Xiong and Rui Li and Suning Ge and Jiaqi Yang},
+  title     = {SalientGS: Unified SfM-to-3DGS with Importance-Guided MCMC Gaussian Allocation},
+  booktitle = {Proceedings of the 34th ACM International Conference on Multimedia},
+  year      = {2026}
+}
+```

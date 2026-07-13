@@ -26,7 +26,7 @@ import tqdm
 import tyro
 import viser
 import yaml
-from vis.utils.colmap import Dataset, Parser
+from vis.utils.colmap import Dataset, Parser, transform_points
 from vis.utils.traj import (
     generate_interpolated_path,
     generate_ellipse_path_z,
@@ -64,13 +64,13 @@ from gsplat.optimizers import SelectiveAdam
 def custom_collate_fn(batch: List[Dict]) -> Dict:
     """Custom collate function that handles variable-length tensors by padding."""
     result = {}
-    
+
     # Keys that may have variable lengths and need padding
     variable_keys = {"points", "point_indices", "depths"}
-    
+
     for key in batch[0].keys():
         values = [item[key] for item in batch]
-        
+
         if key in variable_keys:
             # Pad variable-length tensors
             max_len = max(v.shape[0] for v in values)
@@ -97,20 +97,20 @@ def custom_collate_fn(batch: List[Dict]) -> Dict:
         else:
             # Keep as list for other types (e.g., strings)
             result[key] = values
-    
+
     return result
 
 
 @dataclass
 class ImportanceGuidedMCMCStrategy:
     """Self-contained MCMC strategy with importance-guided proposals.
-    
+
     This strategy follows the paper:
     `3D Gaussian Splatting as Markov Chain Monte Carlo <https://arxiv.org/abs/2404.09591>`_
-    
+
     With extensions for importance-weighted proposal sampling
     and redundancy-guided relocation.
-    
+
     This strategy will:
     - Periodically relocate GSs with low opacity or high redundancy score using
       importance-weighted proposal sampling.
@@ -244,7 +244,7 @@ class ImportanceGuidedMCMCStrategy:
         lr: float,
     ):
         """Post-backward hook with FastGS candidate filtering.
-        
+
         Args:
             lr (float): Learning rate for "means" attribute of the GS.
         """
@@ -452,6 +452,8 @@ class Config:
     normalize_world_space: bool = True
     # Filter outlier points during normalization (set False to disable)
     filter_outliers: bool = False
+    # Crop OpenCV undistortion ROI. Disable for parity with the AG 3DGS+GLOMAP baseline.
+    crop_undistorted_images: bool = True
     # Camera model
     camera_model: Literal["pinhole", "ortho", "fisheye"] = "pinhole"
 
@@ -476,6 +478,8 @@ class Config:
     init_num_pts: int = 100_000
     # Initial extent of GSs as a multiple of the camera extent. Ignored if using sfm
     init_extent: float = 3.0
+    # Optional GLOMAP proposal seed .npz with means/scales/opacities/colors/quats.
+    proposal_init_path: Optional[str] = None
     # Degree of spherical harmonics
     sh_degree: int = 3
     # Initial opacity of GS
@@ -531,6 +535,10 @@ class Config:
     pose_opt_lr: float = 1e-4
     # Regularization for camera optimization as weight decay
     pose_opt_reg: float = 1e-6
+    # First global training step that may update train/test camera poses.
+    pose_opt_start_step: int = 0
+    # Last global training step that may update train/test camera poses (-1 = never stop).
+    pose_opt_stop_step: int = -1
     # Add noise to camera extrinsics. This is only to test the camera pose optimization.
     pose_noise: float = 1e-3
 
@@ -561,6 +569,15 @@ class Config:
     ba_thres: float = 1.0
     # Use Gaussian means as BA track points (shared parameters)
     ba_tracks_in_splats: bool = False
+    # First global training step that may use/update BA track geometry.
+    ba_loss_start_step: int = 0
+    # Last global training step that may use/update BA track geometry (-1 = never stop).
+    ba_loss_stop_step: int = -1
+
+    # Optional CAGE camera-center prior used by the AG CAGE-Offline adapter.
+    cage_pose_prior_path: Optional[str] = None
+    cage_pose_prior_lambda: float = 1e-4
+    cage_pose_prior_huber: float = 0.05
 
     # Dump information to tensorboard every this fraction of epoch (0.0033 ≈ 100/30000 steps)
     tb_every_epochs: float = 0.0033
@@ -599,6 +616,22 @@ class Config:
     def get_sh_degree_interval(self, steps_per_epoch: int) -> int:
         """SH degree interval as fraction of epoch (default ~3.3% of epoch for 1000/30000)."""
         return max(1, int(0.033 * steps_per_epoch))
+
+    def pose_opt_active(self, step: int) -> bool:
+        """Whether camera-pose parameters may receive gradients/updates at this step."""
+        if not self.pose_opt or step < self.pose_opt_start_step:
+            return False
+        return self.pose_opt_stop_step < 0 or step <= self.pose_opt_stop_step
+
+    def pose_opt_enabled_for_eval(self, step: int) -> bool:
+        """Whether evaluation should render with the learned pose offsets."""
+        return self.pose_opt and step >= self.pose_opt_start_step
+
+    def ba_loss_active(self, step: int) -> bool:
+        """Whether the BA reprojection term and BA track updates are active at this step."""
+        if not self.ba_loss or step < self.ba_loss_start_step:
+            return False
+        return self.ba_loss_stop_step < 0 or step <= self.ba_loss_stop_step
 
     def adjust_strategy(self, steps_per_epoch: int):
         """Adjust strategy parameters based on steps_per_epoch."""
@@ -647,11 +680,35 @@ def create_splats_with_optimizers(
     world_rank: int = 0,
     world_size: int = 1,
     init_splats: Optional[torch.nn.ParameterDict] = None,
+    proposal_init_path: Optional[str] = None,
 ) -> Tuple[torch.nn.ParameterDict, Dict[str, torch.optim.Optimizer]]:
     if init_splats is not None:
         splats = init_splats
     else:
-        if init_type == "sfm":
+        proposal_seed = None
+        if proposal_init_path:
+            proposal_seed = np.load(proposal_init_path)
+
+        if proposal_seed is not None:
+            points_np = proposal_seed["means"].astype(np.float32)
+            colors_np = proposal_seed["colors"].astype(np.float32)
+            scales_np = proposal_seed["scales"].astype(np.float32)
+            opacities_np = proposal_seed["opacities"].astype(np.float32)
+            quats_np = proposal_seed["quats"].astype(np.float32)
+
+            # Parser normalization transforms COLMAP world coordinates before training.
+            # Apply the same Sim(3)-like transform to proposal seeds and scale radii.
+            linear = parser.transform[:3, :3].astype(np.float32)
+            points_np = transform_points(parser.transform, points_np).astype(np.float32)
+            scale_factor = float(np.cbrt(max(abs(np.linalg.det(linear)), 1e-30)))
+            scales_np = scales_np + math.log(max(scale_factor, 1e-12))
+
+            points = torch.from_numpy(points_np).float()
+            rgbs = torch.from_numpy(colors_np).float()
+            scales = torch.from_numpy(scales_np).float()
+            quats = torch.from_numpy(quats_np).float()
+            opacities = torch.from_numpy(opacities_np).float()
+        elif init_type == "sfm":
             points = torch.from_numpy(parser.points).float()
             rgbs = torch.from_numpy(parser.points_rgb / 255.0).float()
         elif init_type == "random":
@@ -660,19 +717,23 @@ def create_splats_with_optimizers(
         else:
             raise ValueError("Please specify a correct init_type: sfm or random")
 
-        # Initialize the GS size to be the average dist of the 3 nearest neighbors
-        dist2_avg = (knn(points, 4)[:, 1:] ** 2).mean(dim=-1)  # [N,]
-        dist_avg = torch.sqrt(dist2_avg)
-        scales = torch.log(dist_avg * init_scale).unsqueeze(-1).repeat(1, 3)  # [N, 3]
+        if proposal_seed is None:
+            # Initialize the GS size to be the average dist of the 3 nearest neighbors
+            dist2_avg = (knn(points, 4)[:, 1:] ** 2).mean(dim=-1)  # [N,]
+            dist_avg = torch.sqrt(dist2_avg)
+            scales = torch.log(dist_avg * init_scale).unsqueeze(-1).repeat(1, 3)  # [N, 3]
+            N = points.shape[0]
+            quats = torch.rand((N, 4))  # [N, 4]
+            opacities = torch.logit(torch.full((N,), init_opacity))  # [N,]
 
         # Distribute the GSs to different ranks (also works for single rank)
         points = points[world_rank::world_size]
         rgbs = rgbs[world_rank::world_size]
         scales = scales[world_rank::world_size]
+        quats = quats[world_rank::world_size]
+        opacities = opacities[world_rank::world_size]
 
         N = points.shape[0]
-        quats = torch.rand((N, 4))  # [N, 4]
-        opacities = torch.logit(torch.full((N,), init_opacity))  # [N,]
 
         params = [
             # name, value, lr
@@ -784,6 +845,7 @@ class Runner:
             image_folder_name=cfg.image_folder_name,
             min_num_points=cfg.min_num_points,
             filter_outliers=cfg.filter_outliers,
+            crop_undistorted_images=cfg.crop_undistorted_images,
         )
         self.trainset = Dataset(
             self.parser,
@@ -794,6 +856,24 @@ class Runner:
         self.valset = Dataset(self.parser, split="val", load_depths=cfg.depth_loss or cfg.ba_loss)
         self.scene_scale = self.parser.scene_scale * 1.1 * cfg.global_scale
         print("Scene scale:", self.scene_scale)
+
+        self.cage_prior_centers = None
+        self.cage_prior_mask = None
+        if cfg.cage_pose_prior_path:
+            with open(cfg.cage_pose_prior_path, "r") as f:
+                prior_payload = json.load(f)
+            centers = np.zeros((len(self.parser.image_names), 3), dtype=np.float32)
+            mask = np.zeros((len(self.parser.image_names),), dtype=bool)
+            for idx, name in enumerate(self.parser.image_names):
+                center = prior_payload.get("centers", {}).get(name)
+                if center is None:
+                    continue
+                point = np.asarray([center[0], center[1], center[2], 1.0], dtype=np.float64)
+                centers[idx] = (self.parser.transform @ point)[:3].astype(np.float32)
+                mask[idx] = True
+            self.cage_prior_centers = torch.from_numpy(centers).float().to(self.device)
+            self.cage_prior_mask = torch.from_numpy(mask).bool().to(self.device)
+            print(f"CAGE pose priors: {int(mask.sum())}/{len(mask)} images")
 
         # Model
         feature_dim = 32 if cfg.app_opt else None
@@ -835,6 +915,7 @@ class Runner:
             world_rank=world_rank,
             world_size=world_size,
             init_splats=init_splats,
+            proposal_init_path=cfg.proposal_init_path,
         )
         print("Model initialized. Number of GS:", len(self.splats["means"]))
 
@@ -881,7 +962,7 @@ class Runner:
             ]
             if world_size > 1:
                 self.pose_adjust = DDP(self.pose_adjust)
-            
+
             # Pose adjustment for test images (separate module)
             self.pose_adjust_test = CameraOptModule(len(self.valset)).to(self.device)
             self.pose_adjust_test.zero_init()
@@ -1246,13 +1327,13 @@ class Runner:
     ) -> Tuple[torch.Tensor, Optional[torch.Tensor], Optional[torch.Tensor], Optional[torch.Tensor]]:
         """
         Compute bundle adjustment loss for reprojection consistency.
-        
+
         Args:
             data: Dict containing 'point_indices', 'points', and optionally 'points_lengths'
             camtoworlds: Camera-to-world transforms [B, 4, 4]
             Ks: Intrinsic matrices [B, 3, 3]
             freeze_points: If True, 3D points are frozen (for test pose optimization)
-        
+
         Returns:
             baloss: Scalar BA loss
             reproj_errors: Per-observation reprojection errors (for logging), or None
@@ -1261,10 +1342,10 @@ class Runner:
         """
         device = self.device
         cfg = self.cfg
-        
+
         point_indices = data["point_indices"].to(device)  # [B, M]
         points_2d_obs = data["points"].to(device)  # [B, M, 2]
-        
+
         # Get valid mask for padded data (when batch_size > 1)
         if "points_lengths" in data:
             lengths = data["points_lengths"].to(device)  # [B]
@@ -1272,11 +1353,11 @@ class Runner:
             valid_mask = torch.arange(max_len, device=device)[None, :] < lengths[:, None]
         else:
             valid_mask = torch.ones(point_indices.shape, dtype=torch.bool, device=device)
-        
+
         # Get 3D track points
         if self.track_points_3d is None:
             raise ValueError("BA loss requested but track points are not initialized.")
-        
+
         safe_indices = point_indices
         if cfg.ba_tracks_in_splats:
             max_idx = self.track_points_3d.shape[0]
@@ -1291,33 +1372,33 @@ class Runner:
                 points_3d = self.track_points_3d[safe_indices]  # [B, M, 3]
         else:
             points_3d = self.track_points_3d[safe_indices]  # [B, M, 3]
-        
+
         # Transform to camera space
         worldtocams = torch.inverse(camtoworlds)
         points_cam = torch.matmul(worldtocams[:, :3, :3], points_3d.transpose(1, 2)) + worldtocams[:, :3, 3:4]
         points_cam = points_cam.transpose(1, 2)  # [B, M, 3]
-        
+
         # Pinhole projection
         points_proj = torch.matmul(Ks, points_cam.transpose(1, 2)).transpose(1, 2)
         points_2d_proj = points_proj[..., :2] / (points_proj[..., 2:3] + 1e-10)
-        
+
         # Compute reprojection residuals with Huber robust cost
         residuals = points_2d_proj - points_2d_obs  # [B, M, 2]
-        
+
         # Per-observation reprojection error (L2 norm of residual)
         reproj_errors = torch.norm(residuals, dim=-1)  # [B, M]
-        
+
         # Per-observation Huber loss (no reduction)
-        per_obs_huber = F.huber_loss(residuals, torch.zeros_like(residuals), 
+        per_obs_huber = F.huber_loss(residuals, torch.zeros_like(residuals),
                                      delta=cfg.ba_thres, reduction='none')  # [B, M, 2]
         per_obs_loss = per_obs_huber.sum(dim=-1)  # [B, M] - sum over x,y
-        
+
         # Mask out padded values and compute mean only over valid observations
         per_obs_loss_masked = per_obs_loss * valid_mask.float()
         num_valid = valid_mask.sum()
-        
+
         baloss = per_obs_loss_masked.sum() / (num_valid + 1e-10)
-        
+
         # Return logging info (only valid observations)
         return (
             baloss,
@@ -1350,27 +1431,27 @@ class Runner:
             pin_memory=True,
             collate_fn=collate_fn,
         )
-        
+
         # Compute steps per epoch and total steps from virtual epochs
         steps_per_epoch = len(trainloader)
         effective_max_steps = cfg.num_epochs * steps_per_epoch
-        
+
         # # Ensure minimum of 30000 steps
         # if effective_max_steps < 30000:
         #     effective_max_steps = 30000
-        
+
         # Compute step-based parameters from epoch fractions
         eval_steps = cfg.get_eval_steps(steps_per_epoch)
         save_steps = cfg.get_save_steps(steps_per_epoch)
         tb_every = cfg.get_tb_every(steps_per_epoch)
         sh_degree_interval = cfg.get_sh_degree_interval(steps_per_epoch)
-        
+
         # Adjust strategy parameters based on total steps
         cfg.adjust_strategy(steps_per_epoch)
-        
+
         # Warmup steps for bilateral grid (3.3% of total steps)
         warmup_steps = int(0.033 * effective_max_steps)
-        
+
         print(f"Virtual epochs: {cfg.num_epochs}, steps per epoch: {steps_per_epoch}, "
               f"total steps: {effective_max_steps}")
         print(f"Eval at steps: {eval_steps}, Save at steps: {save_steps}, "
@@ -1386,6 +1467,8 @@ class Runner:
             running_avg["depthloss"] = deque(maxlen=steps_per_epoch)
         if cfg.ba_loss:
             running_avg["baloss"] = deque(maxlen=steps_per_epoch)
+        if self.cage_prior_centers is not None and cfg.cage_pose_prior_lambda > 0.0:
+            running_avg["cageprior"] = deque(maxlen=steps_per_epoch)
 
         schedulers = [
             # means has a learning rate schedule, that end at 0.01 of the initial value
@@ -1471,6 +1554,8 @@ class Runner:
                     depths_gt = data["depths"].to(device)  # [1, M]
 
                 height, width = pixels.shape[1:3]
+                pose_active = cfg.pose_opt_active(step)
+                ba_active = cfg.ba_loss_active(step)
 
                 if cfg.pose_noise:
                     # Anneal pose noise: scale decreases from 1.0 to 0.01 over training
@@ -1479,7 +1564,7 @@ class Runner:
                     # Interpolate between original and perturbed poses based on noise_scale
                     camtoworlds = camtoworlds + noise_scale * (camtoworlds_perturbed - camtoworlds)
 
-                if cfg.pose_opt:
+                if pose_active:
                     camtoworlds = self.pose_adjust(camtoworlds, image_ids)
 
                 # Fix the pose of camera 0
@@ -1549,7 +1634,7 @@ class Runner:
                         depths.permute(0, 3, 1, 2), grid, align_corners=True
                     )  # [B, 1, M, 1]
                     sampled_depths = sampled_depths.squeeze(3).squeeze(1)  # [B, M]
-                    
+
                     # Get valid mask for padded data (when batch_size > 1)
                     if "points_lengths" in data:
                         lengths = data["points_lengths"].to(device)  # [B]
@@ -1557,11 +1642,11 @@ class Runner:
                         depth_valid_mask = torch.arange(max_len, device=device)[None, :] < lengths[:, None]
                     else:
                         depth_valid_mask = torch.ones_like(depths_gt, dtype=torch.bool)
-                    
+
                     # calculate loss in disparity space
                     disp = torch.where(sampled_depths > 0.0, 1.0 / sampled_depths, torch.zeros_like(sampled_depths))
                     disp_gt = 1.0 / depths_gt  # [B, M]
-                    
+
                     # Apply mask and compute mean only over valid observations
                     disp_diff = torch.abs(disp - disp_gt) * depth_valid_mask.float()
                     num_valid_depth = depth_valid_mask.sum()
@@ -1570,6 +1655,20 @@ class Runner:
                 if cfg.use_bilateral_grid:
                     tvloss = 10 * total_variation_loss(self.bil_grids.grids)
                     loss += tvloss
+
+                cageprior = None
+                if self.cage_prior_centers is not None and cfg.cage_pose_prior_lambda > 0.0 and pose_active:
+                    prior_mask = self.cage_prior_mask[abs_indices]
+                    if prior_mask.any():
+                        centers = camtoworlds[:, :3, 3]
+                        target_centers = self.cage_prior_centers[abs_indices]
+                        cageprior = F.huber_loss(
+                            centers[prior_mask],
+                            target_centers[prior_mask],
+                            delta=cfg.cage_pose_prior_huber,
+                            reduction="mean",
+                        )
+                        loss = loss + cageprior * cfg.cage_pose_prior_lambda
 
                 # regularizations
                 if cfg.opacity_reg > 0.0:
@@ -1584,7 +1683,7 @@ class Runner:
                         + cfg.scale_reg * torch.abs(torch.exp(self.splats["scales"])).mean()
                     )
 
-                if cfg.ba_loss:
+                if ba_active:
                     # BA loss: optimize 3D track points for reprojection consistency
                     baloss, reproj_errors, per_obs_loss, point_indices_valid = self.compute_ba_loss(
                         data, camtoworlds, Ks, freeze_points=False
@@ -1601,8 +1700,10 @@ class Runner:
                 running_avg["ssimloss"].append(ssimloss.item())
                 if cfg.depth_loss:
                     running_avg["depthloss"].append(depthloss.item())
-                if cfg.ba_loss:
+                if ba_active:
                     running_avg["baloss"].append(baloss.item())
+                if cageprior is not None:
+                    running_avg["cageprior"].append(cageprior.item())
 
                 loss.backward()
 
@@ -1610,14 +1711,17 @@ class Runner:
                 avg_loss = sum(running_avg["loss"]) / len(running_avg["loss"]) if running_avg["loss"] else 0
                 avg_l1 = sum(running_avg["l1loss"]) / len(running_avg["l1loss"]) if running_avg["l1loss"] else 0
                 avg_ssim = sum(running_avg["ssimloss"]) / len(running_avg["ssimloss"]) if running_avg["ssimloss"] else 0
-                
+
                 desc = f"epoch={epoch}| loss={loss.item():.3f} (avg={avg_loss:.3f})| " f"sh degree={sh_degree_to_use}| "
                 if cfg.depth_loss:
                     avg_depth = sum(running_avg["depthloss"]) / len(running_avg["depthloss"]) if running_avg["depthloss"] else 0
                     desc += f"depth={depthloss.item():.6f} (avg={avg_depth:.6f})| "
-                if cfg.ba_loss:
+                if ba_active:
                     avg_ba = sum(running_avg["baloss"]) / len(running_avg["baloss"]) if running_avg["baloss"] else 0
                     desc += f"ba={baloss.item():.6f} (avg={avg_ba:.6f})| "
+                if cageprior is not None:
+                    avg_prior = sum(running_avg["cageprior"]) / len(running_avg["cageprior"]) if running_avg["cageprior"] else 0
+                    desc += f"cage_prior={cageprior.item():.6f} (avg={avg_prior:.6f})| "
                 if cfg.pose_opt:
                     with torch.no_grad():
                         if self.world_size > 1:
@@ -1652,40 +1756,44 @@ class Runner:
                     if cfg.depth_loss:
                         self.writer.add_scalar("train/depthloss", depthloss.item(), step)
                         self.writer.add_scalar("train/depthloss_avg", avg_depth, step)
-                    if cfg.ba_loss:
+                    if ba_active:
                         self.writer.add_scalar("train/baloss", baloss.item(), step)
                         self.writer.add_scalar("train/baloss_avg", avg_ba, step)
-                        
+                    if cageprior is not None:
+                        self.writer.add_scalar("train/cageprior", cageprior.item(), step)
+                        self.writer.add_scalar("train/cageprior_avg", avg_prior, step)
+
+                    if ba_active and hasattr(self, "_ba_reproj_errors") and self._ba_reproj_errors is not None:
                         # Gradient distribution analysis for BA observations
                         with torch.no_grad():
                             # Per-observation reprojection error statistics
                             reproj_err = self._ba_reproj_errors.flatten()  # [M]
                             per_obs_loss = self._ba_per_obs_loss.flatten()  # [M]
-                            
+
                             # Reprojection error distribution
                             self.writer.add_scalar("ba/reproj_err_mean", reproj_err.mean().item(), step)
                             self.writer.add_scalar("ba/reproj_err_std", reproj_err.std().item(), step)
                             self.writer.add_scalar("ba/reproj_err_min", reproj_err.min().item(), step)
                             self.writer.add_scalar("ba/reproj_err_max", reproj_err.max().item(), step)
                             self.writer.add_scalar("ba/reproj_err_median", reproj_err.median().item(), step)
-                            
+
                             # Percentiles (outlier detection)
                             self.writer.add_scalar("ba/reproj_err_p90", torch.quantile(reproj_err, 0.90).item(), step)
                             self.writer.add_scalar("ba/reproj_err_p95", torch.quantile(reproj_err, 0.95).item(), step)
                             self.writer.add_scalar("ba/reproj_err_p99", torch.quantile(reproj_err, 0.99).item(), step)
-                            
+
                             # Per-observation loss distribution
                             self.writer.add_scalar("ba/per_obs_loss_mean", per_obs_loss.mean().item(), step)
                             self.writer.add_scalar("ba/per_obs_loss_std", per_obs_loss.std().item(), step)
                             self.writer.add_scalar("ba/per_obs_loss_max", per_obs_loss.max().item(), step)
-                            
+
                             # Count of inliers/outliers (error > 2*threshold is likely outlier)
                             inlier_mask = reproj_err < cfg.ba_thres
                             outlier_mask = reproj_err > 2 * cfg.ba_thres
                             self.writer.add_scalar("ba/inlier_ratio", inlier_mask.float().mean().item(), step)
                             self.writer.add_scalar("ba/outlier_ratio", outlier_mask.float().mean().item(), step)
                             self.writer.add_scalar("ba/num_observations", reproj_err.shape[0], step)
-                            
+
                             # Track point gradient analysis
                             if self.track_points_3d.grad is not None:
                                 track_grad = self.track_points_3d.grad  # [N, 3]
@@ -1698,7 +1806,7 @@ class Runner:
                                     self.writer.add_scalar("ba/grad_max", active_grads.max().item(), step)
                                     self.writer.add_scalar("ba/grad_min", active_grads.min().item(), step)
                                     self.writer.add_scalar("ba/num_active_tracks", nonzero_mask.sum().item(), step)
-                            
+
                             # Histogram of reprojection errors (logged less frequently)
                             if step % (tb_every * 10) == 0:
                                 self.writer.add_histogram("ba/reproj_err_hist", reproj_err.cpu(), step)
@@ -1713,7 +1821,7 @@ class Runner:
                             self.writer.add_scalar("train/pose_dist", dist.item(), step)
                     if cfg.pose_noise:
                         self.writer.add_scalar("train/pose_noise_scale", noise_scale, step)
-                    if cfg.ba_loss and self.ba_optimizers:
+                    if ba_active and self.ba_optimizers:
                         # Log current BA learning rate
                         ba_lr = self.ba_optimizers[0].param_groups[0]['lr']
                         self.writer.add_scalar("train/ba_lr", ba_lr, step)
@@ -1742,14 +1850,14 @@ class Runner:
                         if cfg.depth_loss:
                             log_dict["train/depthloss"] = depthloss.item()
                             log_dict["train/depthloss_avg"] = avg_depth
-                        if cfg.ba_loss:
+                        if ba_active:
                             log_dict["train/baloss"] = baloss.item()
                             log_dict["train/baloss_avg"] = avg_ba
                             # BA gradient distribution analysis for wandb
                             with torch.no_grad():
                                 reproj_err = self._ba_reproj_errors.flatten()
                                 per_obs_loss = self._ba_per_obs_loss.flatten()
-                                
+
                                 log_dict.update({
                                     "ba/reproj_err_mean": reproj_err.mean().item(),
                                     "ba/reproj_err_std": reproj_err.std().item(),
@@ -1766,7 +1874,7 @@ class Runner:
                                     "ba/outlier_ratio": (reproj_err > 2 * cfg.ba_thres).float().mean().item(),
                                     "ba/num_observations": reproj_err.shape[0],
                                 })
-                                
+
                                 if self.track_points_3d.grad is not None:
                                     track_grad = self.track_points_3d.grad
                                     grad_norms = torch.norm(track_grad, dim=-1)
@@ -1780,7 +1888,7 @@ class Runner:
                                             "ba/grad_min": active_grads.min().item(),
                                             "ba/num_active_tracks": nonzero_mask.sum().item(),
                                         })
-                                        
+
                                 # Histograms for wandb (logged less frequently)
                                 if step % (tb_every * 10) == 0:
                                     log_dict["ba/reproj_err_hist"] = wandb.Histogram(reproj_err.cpu().numpy())
@@ -1797,7 +1905,7 @@ class Runner:
                                 log_dict["train/pose_dist"] = dist.item()
                         if cfg.pose_noise:
                             log_dict["train/pose_noise_scale"] = noise_scale
-                        if cfg.ba_loss and self.ba_optimizers:
+                        if ba_active and self.ba_optimizers:
                             ba_lr = self.ba_optimizers[0].param_groups[0]['lr']
                             log_dict["train/ba_lr"] = ba_lr
                         if cfg.use_bilateral_grid:
@@ -1869,19 +1977,21 @@ class Runner:
                     else:
                         optimizer.step()
                     optimizer.zero_grad(set_to_none=True)
-                for optimizer in self.pose_optimizers:
-                    optimizer.step()
-                    optimizer.zero_grad(set_to_none=True)
+                if pose_active:
+                    for optimizer in self.pose_optimizers:
+                        optimizer.step()
+                        optimizer.zero_grad(set_to_none=True)
                 for optimizer in self.app_optimizers:
                     optimizer.step()
                     optimizer.zero_grad(set_to_none=True)
                 for optimizer in self.bil_grid_optimizers:
                     optimizer.step()
                     optimizer.zero_grad(set_to_none=True)
-                for optimizer in self.ba_optimizers:
-                    optimizer.step()
-                    optimizer.zero_grad(set_to_none=True)
-                
+                if ba_active:
+                    for optimizer in self.ba_optimizers:
+                        optimizer.step()
+                        optimizer.zero_grad(set_to_none=True)
+
                 for scheduler in schedulers:
                     scheduler.step()
 
@@ -1953,8 +2063,12 @@ class Runner:
 
             # Test pose optimization: iterate through all test views after training epoch
             # Freeze GS, only optimize test camera poses
-            if cfg.pose_opt:
+            test_pose_active = cfg.pose_opt_active(step)
+            test_ba_active = cfg.ba_loss_active(step)
+            if test_pose_active:
                 sh_degree_to_use = min(step // sh_degree_interval, cfg.sh_degree)
+                test_baloss = None
+                test_cageprior = None
                 for test_data in testloader:
                     test_camtoworlds = test_camtoworlds_gt = test_data["camtoworld"].to(device)
                     test_Ks = test_data["K"].to(device)
@@ -1997,28 +2111,45 @@ class Runner:
                     test_loss = test_l1loss * (1.0 - cfg.ssim_lambda) + test_ssimloss * cfg.ssim_lambda
 
                     # BA loss for test pose optimization (keep track points optimizable, freeze GS only)
-                    if cfg.ba_loss and "point_indices" in test_data:
+                    if test_ba_active and "point_indices" in test_data:
                         test_baloss, _, _, _ = self.compute_ba_loss(
                             test_data, test_camtoworlds, test_Ks, freeze_points=False
                         )
                         test_loss = test_loss + test_baloss * cfg.ba_lambda
+
+                    test_cageprior = None
+                    if self.cage_prior_centers is not None and cfg.cage_pose_prior_lambda > 0.0 and test_abs_indices is not None and test_pose_active:
+                        test_prior_mask = self.cage_prior_mask[test_abs_indices]
+                        if test_prior_mask.any():
+                            test_centers = test_camtoworlds[:, :3, 3]
+                            test_target_centers = self.cage_prior_centers[test_abs_indices]
+                            test_cageprior = F.huber_loss(
+                                test_centers[test_prior_mask],
+                                test_target_centers[test_prior_mask],
+                                delta=cfg.cage_pose_prior_huber,
+                                reduction="mean",
+                            )
+                            test_loss = test_loss + test_cageprior * cfg.cage_pose_prior_lambda
 
                     # Backward and optimize test pose + BA keypoints (GS remains frozen)
                     test_loss.backward()
                     for optimizer in self.pose_optimizers_test:
                         optimizer.step()
                         optimizer.zero_grad(set_to_none=True)
-                    for optimizer in self.ba_optimizers:
-                        optimizer.step()
-                        optimizer.zero_grad(set_to_none=True)
+                    if test_ba_active:
+                        for optimizer in self.ba_optimizers:
+                            optimizer.step()
+                            optimizer.zero_grad(set_to_none=True)
 
                 # Log test pose optimization at end of epoch
                 if world_rank == 0 and tb_every > 0:
                     self.writer.add_scalar("test_pose/loss", test_loss.item(), step)
                     self.writer.add_scalar("test_pose/l1loss", test_l1loss.item(), step)
                     self.writer.add_scalar("test_pose/ssimloss", test_ssimloss.item(), step)
-                    if cfg.ba_loss:
+                    if test_baloss is not None:
                         self.writer.add_scalar("test_pose/baloss", test_baloss.item(), step)
+                    if test_cageprior is not None:
+                        self.writer.add_scalar("test_pose/cageprior", test_cageprior.item(), step)
                     with torch.no_grad():
                         if self.world_size > 1:
                             test_embeds = self.pose_adjust_test.module.embeds.weight
@@ -2026,7 +2157,7 @@ class Runner:
                             test_embeds = self.pose_adjust_test.embeds.weight
                         test_dist = torch.norm(test_embeds[:, :3], dim=-1).mean()
                         self.writer.add_scalar("test_pose/pose_dist", test_dist.item(), step)
-                    
+
                     if cfg.use_wandb:
                         log_dict = {
                             "test_pose/loss": test_loss.item(),
@@ -2036,7 +2167,7 @@ class Runner:
                             "test_pose/step": step,
                             "test_pose/epoch": epoch,
                         }
-                        if cfg.ba_loss:
+                        if test_baloss is not None:
                             log_dict["test_pose/baloss"] = test_baloss.item()
                         wandb.log(log_dict, commit=False)
 
@@ -2054,7 +2185,7 @@ class Runner:
         # Use provided dataset or default to valset
         if dataset is None:
             dataset = self.valset if stage == "val" else self.trainset
-        
+
         evalloader = torch.utils.data.DataLoader(
             dataset, batch_size=1, shuffle=False, num_workers=1
         )
@@ -2071,12 +2202,12 @@ class Runner:
 
             # Apply pose adjustment if enabled (must match training)
             # Use pose_adjust for train images, pose_adjust_test for val images
-            if cfg.pose_opt and hasattr(self, 'pose_adjust'):
+            if cfg.pose_opt_enabled_for_eval(step) and hasattr(self, 'pose_adjust'):
                 if stage == "val" and hasattr(self, 'pose_adjust_test'):
                     camtoworlds = self.pose_adjust_test(camtoworlds, image_ids)
                 else:
                     camtoworlds = self.pose_adjust(camtoworlds, image_ids)
-                
+
                 # Fix the pose of camera 0 (same as training)
                 if abs_indices is not None:
                     mask = (abs_indices == 0)
@@ -2127,9 +2258,13 @@ class Runner:
                 metrics["ssim"].append(self.ssim(colors_p, pixels_p))
                 metrics["lpips"].append(self.lpips(colors_p, pixels_p))
                 if cfg.use_bilateral_grid:
-                    cc_colors = color_correct(colors, pixels)
-                    cc_colors_p = cc_colors.permute(0, 3, 1, 2)  # [1, 3, H, W]
-                    metrics["cc_psnr"].append(self.psnr(cc_colors_p, pixels_p))
+                    try:
+                        cc_colors = color_correct(colors, pixels)
+                    except AssertionError:
+                        cc_colors = None
+                    if cc_colors is not None and torch.isfinite(cc_colors).all():
+                        cc_colors_p = cc_colors.permute(0, 3, 1, 2)  # [1, 3, H, W]
+                        metrics["cc_psnr"].append(self.psnr(cc_colors_p, pixels_p))
 
         if world_rank == 0:
             ellipse_time /= len(evalloader)

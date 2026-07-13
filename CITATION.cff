@@ -1,0 +1,14 @@
+cff-version: 1.2.0
+title: "SalientGS: Unified SfM-to-3DGS with Importance-Guided MCMC Gaussian Allocation"
+authors:
+  - family-names: Xiong
+    given-names: Tianyu
+  - family-names: Li
+    given-names: Rui
+  - family-names: Ge
+    given-names: Suning
+  - family-names: Yang
+    given-names: Jiaqi
+year: 2026
+repository-code: "https://github.com/Six-Bit-TX/SalientGS"
+license: CC-BY-NC-4.0

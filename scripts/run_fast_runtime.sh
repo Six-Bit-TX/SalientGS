@@ -3,7 +3,7 @@
 # Times global_matching and fastmap stages on different dataset sizes
 # Uses Courthouse dataset (1000+ images) with sequential sampling
 #
-# Usage: 
+# Usage:
 #   bash run_fast_runtime.sh                    # Run on all sizes (250, 500, 750, 1000)
 #   bash run_fast_runtime.sh 500                # Run on specific size only
 #
