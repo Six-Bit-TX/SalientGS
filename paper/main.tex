@@ -403,8 +403,9 @@ We ablate each key component of SalientGS on the Mip-NeRF 360 benchmark to quant
 %% ---------------------------------------------------------------------------
 \begin{table}[t]
     \centering
-    \footnotesize
-    \setlength\tabcolsep{3pt}
+    \scriptsize
+    \setlength\tabcolsep{1.5pt}
+    \renewcommand{\arraystretch}{0.95}
     \caption{
         \textbf{Component ablation on Mip-NeRF 360.} Each row removes or replaces one component from the full model. $\Delta$PSNR is relative to the full model.
     }
@@ -565,9 +566,9 @@ This experiment is designed to isolate the contribution of joint optimization of
         Three SfM initializations---FastMap~\cite{fastmap}, COLMAP~\cite{colmap}, GLOMAP~\cite{pan2024glomap}---evaluated before and after joint optimization (\S\ref{sec:pose_opt}).
         Results on two subsets: 39 sequences where SfM and joint training both succeed, and 34 where 3DGS reconstruction also succeeds (PSNR${>}$20).
     }
-    \begin{tabular}{l l ccc}
+    \begin{tabular}{@{}llccc@{}}
         \toprule
-        Subset & Method & Recall@0.1m & AUC@0.1m & AUC@0.5m \\
+        Subset & Method & \shortstack[c]{Recall@\\0.1m} & \shortstack[c]{AUC@\\0.1m} & \shortstack[c]{AUC@\\0.5m} \\
         \midrule
         \multirow{6}{*}{\shortstack[l]{Train-succ.\\(39 seq.)}}
         & FastMap (init) & 50.5 & 37.2 & 58.2 \\
