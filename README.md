@@ -17,13 +17,17 @@ Paper: [`paper/main.pdf`](paper/main.pdf) · Supplementary: [`paper/supplementar
 
 The released code targets Python 3.10 or newer, PyTorch with CUDA support, COLMAP for SIFT feature extraction, and [`gsplat`](https://github.com/nerfstudio-project/gsplat).
 
+Create/activate a CUDA-enabled Python environment with PyTorch first, then run:
+
 ```bash
 git clone https://github.com/Six-Bit-TX/SalientGS.git
 cd SalientGS
-
-pip install -e fastmap/
-pip install -e .
+./scripts/setup_salientgs.sh
 ```
+
+The setup script checks PyTorch/CUDA and COLMAP, builds FastMap for the visible
+GPU architecture (including Blackwell), installs the Python dependencies, and
+loads the CUDA extension as a final check.
 
 The Python package dependencies are pinned or listed in [`pyproject.toml`](pyproject.toml). The FastMap extension requires a CUDA-capable build environment.
 
@@ -58,6 +62,42 @@ dataset/
 ```
 
 The [`scripts/`](scripts/) directory contains benchmark, runtime, ETH3D pose-evaluation, and GLOMAP comparison scripts.
+
+The exact per-scene measurements from the July 2026 13-scene verification run
+are archived in [`results/paper_reproduction_seed42.csv`](results/paper_reproduction_seed42.csv),
+with aggregate comparisons and protocol notes in
+[`results/README.md`](results/README.md).
+
+## One-click paper reproduction
+
+The reproduction runner is non-destructive: source images are symlinked into a
+separate work directory, and databases, sparse models, checkpoints, logs, and
+CSV/JSON summaries are written there. Completed stages are resumed automatically.
+
+```bash
+# Short checks on four representative scenes (7K training steps).
+./scripts/reproduce_paper.sh \
+  --dataset-root /path/to/data \
+  --work-root /path/to/salientgs_runs \
+  --profile representative
+
+# Full 13-scene protocol (30K steps, 1.5M Gaussian cap).
+./scripts/reproduce_paper.sh \
+  --dataset-root /path/to/data \
+  --work-root /path/to/salientgs_runs \
+  --profile full
+
+# Fair vanilla-MCMC control using the same SfM outputs and seed.
+./scripts/reproduce_paper.sh \
+  --dataset-root /path/to/data \
+  --work-root /path/to/salientgs_runs \
+  --profile full --method vanilla --stages train
+```
+
+Use `--scenes garden counter` to split a long run across invocations. Summaries
+are merged at `PROFILE/summary_guided.csv` (or `summary_vanilla.csv`). For an
+isolated training diagnostic using the reference sparse model, add
+`--reference-sfm --stages train`; this is not an end-to-end paper result.
 
 ## Reproducibility notes
 

@@ -123,7 +123,7 @@ class ImportanceGuidedMCMCStrategy:
     cap_max: int = 1_000_000
     # MCMC sampling noise learning rate
     noise_lr: float = 5e5
-    # Start refining GSs after this fraction of total training (500/30000 ≈ 0.0167)
+    # Legacy normalized values retained for checkpoint/config compatibility.
     refine_start_epoch: float = 0.0167
     # Stop refining GSs after this fraction of total training (25000/30000 ≈ 0.8333)
     refine_stop_epoch: float = 0.8333
@@ -154,6 +154,10 @@ class ImportanceGuidedMCMCStrategy:
     # Mix opacity with a uniform prior to avoid under-sampling low-opacity underfit regions.
     # Proposal base weight becomes: (1-mix)*opacity + mix.
     proposal_opacity_mix: float = 0.05
+    # Strength of importance modulation (0 = vanilla proposal, 1 = full paper weight).
+    importance_weight_strength: float = 1.0
+    # Relocation may use a gentler modulation than birth; None shares the value above.
+    relocation_importance_weight_strength: Optional[float] = None
 
     # === Ablation toggles ===
     # Disable importance weighting for birth (new GS spawning)
@@ -211,7 +215,7 @@ class ImportanceGuidedMCMCStrategy:
         }
 
     def _compute_importance_weights(
-        self, importance: Optional[Tensor]
+        self, importance: Optional[Tensor], strength: Optional[float] = None
     ) -> Optional[Tensor]:
         """Compute soft importance weights for proposal sampling."""
         if importance is None:
@@ -224,7 +228,10 @@ class ImportanceGuidedMCMCStrategy:
         x = (importance.float() - thresh) / thresh
         imp = F.softplus(x)
         imp = imp / (imp.mean() + 1e-6)
-        return imp
+        if strength is None:
+            strength = self.importance_weight_strength
+        strength = float(min(1.0, max(0.0, strength)))
+        return (1.0 - strength) + strength * imp
 
     def step_pre_backward(
         self,
@@ -315,13 +322,16 @@ class ImportanceGuidedMCMCStrategy:
 
         # Importance-weighted proposal for relocation targets
         weights = opacities[alive_indices].flatten()
-        if self.proposal_opacity_mix > 0:
-            mix = float(self.proposal_opacity_mix)
-            weights = weights * (1.0 - mix) + mix
         if state is not None and not self.no_relocation_weighting:
             importance = state.get("fastgs_importance", None)
-            importance_weights = self._compute_importance_weights(importance)
+            relocation_strength = self.relocation_importance_weight_strength
+            importance_weights = self._compute_importance_weights(
+                importance, relocation_strength
+            )
             if importance_weights is not None:
+                if self.proposal_opacity_mix > 0:
+                    mix = float(self.proposal_opacity_mix)
+                    weights = weights * (1.0 - mix) + mix
                 weights = weights * importance_weights[alive_indices].flatten()
                 if weights.sum() <= 0 and self.fallback_to_opacity:
                     weights = opacities[alive_indices].flatten()
@@ -353,14 +363,17 @@ class ImportanceGuidedMCMCStrategy:
 
         _update_param_with_optimizer(param_fn, optimizer_fn, params, optimizers)
         if state is not None:
-            n_gauss = params["means"].shape[0]
-            for k, v in state.items():
-                if (
-                    isinstance(v, torch.Tensor)
-                    and v.ndim > 0
-                    and v.shape[0] == n_gauss
-                ):
-                    v[sampled_idxs] = 0
+            # Relocated slots now represent copies of the sampled underfit
+            # targets. Preserve target importance, but clear stale redundancy
+            # so the new locations are not relocated again before the next
+            # multi-view score refresh.
+            importance = state.get("fastgs_importance")
+            if isinstance(importance, torch.Tensor):
+                importance[dead_indices] = importance[sampled_idxs].clone()
+            for key in ("fastgs_redundancy", "fastgs_pruning"):
+                value = state.get(key)
+                if isinstance(value, torch.Tensor):
+                    value[dead_indices] = 0
         return n_gs
 
     @torch.no_grad()
@@ -379,14 +392,14 @@ class ImportanceGuidedMCMCStrategy:
 
         opacities = torch.sigmoid(params["opacities"])
         weights = opacities.flatten()
-        if self.proposal_opacity_mix > 0:
-            mix = float(self.proposal_opacity_mix)
-            weights = weights * (1.0 - mix) + mix
 
         if state is not None and not self.no_birth_weighting:
             importance = state.get("fastgs_importance", None)
             importance_weights = self._compute_importance_weights(importance)
             if importance_weights is not None:
+                if self.proposal_opacity_mix > 0:
+                    mix = float(self.proposal_opacity_mix)
+                    weights = weights * (1.0 - mix) + mix
                 weights = weights * importance_weights.flatten()
                 if weights.sum() <= 0:
                     if self.fallback_to_opacity:
@@ -416,11 +429,25 @@ class ImportanceGuidedMCMCStrategy:
             v_new = torch.zeros((len(sampled_idxs), *v.shape[1:]), device=v.device)
             return torch.cat([v, v_new])
 
+        old_n_gauss = current_n_points
         _update_param_with_optimizer(param_fn, optimizer_fn, params, optimizers)
+        # Score maps are intentionally reused between the relatively expensive
+        # multi-view scoring passes. Keep their length aligned after births by
+        # inheriting the sampled parent's score until the next refresh.
+        if state is not None:
+            for key, value in list(state.items()):
+                if (
+                    isinstance(value, torch.Tensor)
+                    and value.ndim > 0
+                    and value.shape[0] == old_n_gauss
+                ):
+                    state[key] = torch.cat([value, value[sampled_idxs].clone()], dim=0)
         return n_gs
 
 @dataclass
 class Config:
+    # Reproducible RNG seed (offset by distributed rank).
+    seed: int = 42
     # Disable viewer
     disable_viewer: bool = True
     # Close viewer after training
@@ -463,7 +490,13 @@ class Config:
     # Batch size for training. Learning rates are scaled automatically
     batch_size: int = 1
 
-    # Number of virtual epochs for training
+    # Exact optimization budget used for the paper protocol.
+    max_steps: int = 30_000
+    # Absolute paper schedule horizon. Short diagnostics follow the first N
+    # steps of the 30K run instead of compressing all schedules into N steps.
+    schedule_steps: int = 30_000
+    sh_degree_interval_steps: int = 1_000
+    # Legacy virtual-epoch budget, used only when max_steps <= 0.
     num_epochs: int = 184
     # A global factor to scale the number of epochs (useful for distributed training)
     epochs_scaler: float = 1.0
@@ -508,16 +541,19 @@ class Config:
     antialiased: bool = False
 
     # FastGS scoring configuration (importance/redundancy)
-    fastgs_num_views: int = 5
+    fastgs_num_views: int = 10
     fastgs_loss_thresh: float = 0.1
     # Low-error threshold for redundancy (defaults to 0.5 * fastgs_loss_thresh)
     fastgs_low_loss_thresh: Optional[float] = None
     # Use quantile thresholds by default (more robust than fixed thresholds)
     fastgs_hi_quantile: float = 0.90
-    fastgs_lo_quantile: float = 0.05
+    fastgs_lo_quantile: float = 0.10
     # Robust per-view normalization quantiles for L1 error maps
     fastgs_norm_q_low: float = 0.05
-    fastgs_norm_q_high: float = 0.95
+    fastgs_norm_q_high: float = 0.90
+    # First score refresh and interval from the camera-ready protocol.
+    fastgs_score_warmup_step: int = 3_000
+    fastgs_score_every: int = 500
     # Disable footprint-area normalization in importance/redundancy scoring
     no_footprint_norm: bool = False
 
@@ -540,7 +576,7 @@ class Config:
     # Last global training step that may update train/test camera poses (-1 = never stop).
     pose_opt_stop_step: int = -1
     # Add noise to camera extrinsics. This is only to test the camera pose optimization.
-    pose_noise: float = 1e-3
+    pose_noise: float = 0.0
 
     # Enable appearance optimization. (experimental)
     app_opt: bool = False
@@ -564,7 +600,7 @@ class Config:
     # Enable BA loss.
     ba_loss: bool = True
     # Weight for BA loss
-    ba_lambda: float = 1e-4
+    ba_lambda: float = 0.01
     # Huber threshold for BA loss
     ba_thres: float = 1.0
     # Use Gaussian means as BA track points (shared parameters)
@@ -581,6 +617,7 @@ class Config:
 
     # Dump information to tensorboard every this fraction of epoch (0.0033 ≈ 100/30000 steps)
     tb_every_epochs: float = 0.0033
+    tb_every_steps: int = 100
     # Save training images to tensorboard
     tb_save_image: bool = False
 
@@ -599,23 +636,29 @@ class Config:
         """Scale num_epochs by factor. Other epoch-based params are fractions so they don't need adjustment."""
         self.num_epochs = int(self.num_epochs * factor)
 
+    def total_steps(self, steps_per_epoch: int) -> int:
+        """Return the exact requested budget, with legacy epoch fallback."""
+        if self.max_steps > 0:
+            return self.max_steps
+        return self.num_epochs * steps_per_epoch
+
     def get_eval_steps(self, steps_per_epoch: int) -> List[int]:
-        """Convert eval_epochs fractions to actual step numbers."""
-        total_steps = self.num_epochs * steps_per_epoch
+        """Convert eval fractions to actual step numbers."""
+        total_steps = self.total_steps(steps_per_epoch)
         return [int(frac * total_steps) - 1 for frac in self.eval_epochs]
 
     def get_save_steps(self, steps_per_epoch: int) -> List[int]:
         """Convert save_epochs fractions to actual step numbers."""
-        total_steps = self.num_epochs * steps_per_epoch
+        total_steps = self.total_steps(steps_per_epoch)
         return [int(frac * total_steps) - 1 for frac in self.save_epochs]
 
     def get_tb_every(self, steps_per_epoch: int) -> int:
-        """Convert tb_every_epochs fraction to actual step interval."""
-        return max(1, int(self.tb_every_epochs * steps_per_epoch))
+        """Use a stable logging interval independent of scene image count."""
+        return max(1, self.tb_every_steps)
 
     def get_sh_degree_interval(self, steps_per_epoch: int) -> int:
-        """SH degree interval as fraction of epoch (default ~3.3% of epoch for 1000/30000)."""
-        return max(1, int(0.033 * steps_per_epoch))
+        """Use the paper's absolute 1K-step spherical-harmonics schedule."""
+        return max(1, self.sh_degree_interval_steps)
 
     def pose_opt_active(self, step: int) -> bool:
         """Whether camera-pose parameters may receive gradients/updates at this step."""
@@ -635,30 +678,29 @@ class Config:
 
     def adjust_strategy(self, steps_per_epoch: int):
         """Adjust strategy parameters based on steps_per_epoch."""
-        total_steps = self.num_epochs * steps_per_epoch
+        total_steps = self.total_steps(steps_per_epoch)
         strategy = self.strategy
         if isinstance(strategy, DefaultStrategy):
-            # Default: refine_start=500, refine_stop=15000, reset_every=3000, refine_every=100
-            # As fractions of 30000: 1.67%, 50%, 10%, 0.33%
-            strategy.refine_start_iter = int(0.0167 * total_steps)
-            strategy.refine_stop_iter = int(0.5 * total_steps)
-            strategy.reset_every = int(0.1 * total_steps)
-            strategy.refine_every = int(0.0033 * total_steps)
+            strategy.refine_start_iter = 500
+            strategy.refine_stop_iter = 15_000
+            strategy.reset_every = 3_000
+            strategy.refine_every = 100
         elif isinstance(strategy, ImportanceGuidedMCMCStrategy):
-            # ImportanceGuidedMCMCStrategy uses epoch-based parameters, convert to iterations
-            strategy.refine_start_iter = int(strategy.refine_start_epoch * total_steps)
-            strategy.refine_stop_iter = int(strategy.refine_stop_epoch * total_steps)
-            strategy.refine_every = max(1, int(strategy.refine_every_epoch * total_steps))
+            strategy.refine_start_iter = 500
+            strategy.refine_stop_iter = 25_000
+            strategy.refine_every = 100
             if strategy.noise_injection_stop_epoch >= 0:
-                strategy.noise_injection_stop_iter = int(strategy.noise_injection_stop_epoch * total_steps)
+                strategy.noise_injection_stop_iter = int(
+                    strategy.noise_injection_stop_epoch * self.schedule_steps
+                )
             else:
                 strategy.noise_injection_stop_iter = -1
         elif isinstance(strategy, MCMCStrategy):
             # MCMCStrategy uses iteration-based parameters, scale them
             # refine_start_iter: 500/30000 ≈ 0.0167
             # refine_stop_iter: 25000/30000 ≈ 0.8333
-            strategy.refine_start_iter = int(0.0167 * total_steps)
-            strategy.refine_stop_iter = int(0.8333 * total_steps)
+            strategy.refine_start_iter = 500
+            strategy.refine_stop_iter = 25_000
         else:
             raise ValueError(f"Unknown strategy type: {type(strategy)}")
 
@@ -800,7 +842,7 @@ class Runner:
     def __init__(
         self, local_rank: int, world_rank, world_size: int, cfg: Config
     ) -> None:
-        set_random_seed(42 + local_rank)
+        set_random_seed(cfg.seed + local_rank)
 
         self.cfg = cfg
         self.world_rank = world_rank
@@ -1184,6 +1226,15 @@ class Runner:
         for idx in view_indices:
             data = self.trainset[int(idx)]
             camtoworlds = data["camtoworld"].to(device).unsqueeze(0)
+            # Attribute residuals using the same jointly optimized camera pose
+            # that is used by the training render, not the stale SfM pose.
+            if cfg.pose_opt and hasattr(self, "pose_adjust"):
+                image_id = torch.as_tensor(
+                    data["image_id"], device=device, dtype=torch.long
+                ).reshape(1)
+                adjusted = self.pose_adjust(camtoworlds, image_id)
+                abs_index = int(data.get("index", -1))
+                camtoworlds = camtoworlds if abs_index == 0 else adjusted
             Ks = data["K"].to(device).unsqueeze(0)
             pixels = data["image"].to(device) / 255.0
             height, width = pixels.shape[0], pixels.shape[1]
@@ -1232,7 +1283,7 @@ class Runner:
             q_low = max(0.0, min(1.0, q_low))
             q_high = max(0.0, min(1.0, q_high))
             if q_high <= q_low:
-                q_low, q_high = 0.05, 0.95
+                q_low, q_high = 0.05, 0.90
 
             low_val = torch.quantile(valid_vals, q_low)
             high_val = torch.quantile(valid_vals, q_high)
@@ -1413,11 +1464,6 @@ class Runner:
         world_rank = self.world_rank
         world_size = self.world_size
 
-        # Dump cfg.
-        if world_rank == 0:
-            with open(f"{cfg.result_dir}/cfg.yml", "w") as f:
-                yaml.dump(vars(cfg), f)
-
         init_step = self.start_step
 
         # Use custom collate function if we have variable-length data (depth_loss or ba_loss)
@@ -1432,13 +1478,11 @@ class Runner:
             collate_fn=collate_fn,
         )
 
-        # Compute steps per epoch and total steps from virtual epochs
+        # Keep the paper protocol scene-independent: every scene gets exactly
+        # max_steps updates rather than a different budget based on image count.
         steps_per_epoch = len(trainloader)
-        effective_max_steps = cfg.num_epochs * steps_per_epoch
-
-        # # Ensure minimum of 30000 steps
-        # if effective_max_steps < 30000:
-        #     effective_max_steps = 30000
+        effective_max_steps = cfg.total_steps(steps_per_epoch)
+        epochs_to_run = math.ceil(effective_max_steps / steps_per_epoch)
 
         # Compute step-based parameters from epoch fractions
         eval_steps = cfg.get_eval_steps(steps_per_epoch)
@@ -1449,10 +1493,16 @@ class Runner:
         # Adjust strategy parameters based on total steps
         cfg.adjust_strategy(steps_per_epoch)
 
-        # Warmup steps for bilateral grid (3.3% of total steps)
-        warmup_steps = int(0.033 * effective_max_steps)
+        # Dump both user-facing values and derived iteration schedules.
+        if world_rank == 0:
+            with open(f"{cfg.result_dir}/cfg.yml", "w") as f:
+                yaml.dump(vars(cfg), f)
 
-        print(f"Virtual epochs: {cfg.num_epochs}, steps per epoch: {steps_per_epoch}, "
+        # Warmup steps for bilateral grid (3.3% of total steps)
+        warmup_steps = int(0.033 * cfg.schedule_steps)
+        lr_schedule_steps = max(1, cfg.schedule_steps)
+
+        print(f"Epoch passes: {epochs_to_run}, steps per epoch: {steps_per_epoch}, "
               f"total steps: {effective_max_steps}")
         print(f"Eval at steps: {eval_steps}, Save at steps: {save_steps}, "
               f"TB every: {tb_every} steps, SH interval: {sh_degree_interval} steps")
@@ -1473,21 +1523,23 @@ class Runner:
         schedulers = [
             # means has a learning rate schedule, that end at 0.01 of the initial value
             torch.optim.lr_scheduler.ExponentialLR(
-                self.optimizers["means"], gamma=0.01 ** (1.0 / effective_max_steps)
+                self.optimizers["means"], gamma=0.01 ** (1.0 / lr_schedule_steps)
             ),
         ]
+        test_pose_scheduler = None
         if cfg.pose_opt:
             # pose optimization has a learning rate schedule
             schedulers.append(
                 torch.optim.lr_scheduler.ExponentialLR(
-                    self.pose_optimizers[0], gamma=0.01 ** (1.0 / effective_max_steps)
+                    self.pose_optimizers[0], gamma=0.01 ** (1.0 / lr_schedule_steps)
                 )
             )
-            # test pose optimization has same schedule
-            schedulers.append(
-                torch.optim.lr_scheduler.ExponentialLR(
-                    self.pose_optimizers_test[0], gamma=0.01 ** (1.0 / effective_max_steps)
-                )
+            # Validation poses are updated once per validation image and epoch,
+            # so their decay must follow that optimizer's own update count.
+            scheduled_epochs = math.ceil(cfg.schedule_steps / steps_per_epoch)
+            test_pose_updates = max(1, scheduled_epochs * len(self.valset))
+            test_pose_scheduler = torch.optim.lr_scheduler.ExponentialLR(
+                self.pose_optimizers_test[0], gamma=0.01 ** (1.0 / test_pose_updates)
             )
         if cfg.use_bilateral_grid:
             # bilateral grid has a learning rate schedule. Linear warmup then decay.
@@ -1500,7 +1552,7 @@ class Runner:
                             total_iters=warmup_steps,
                         ),
                         torch.optim.lr_scheduler.ExponentialLR(
-                            self.bil_grid_optimizers[0], gamma=0.01 ** (1.0 / effective_max_steps)
+                            self.bil_grid_optimizers[0], gamma=0.01 ** (1.0 / lr_schedule_steps)
                         ),
                     ]
                 )
@@ -1509,7 +1561,7 @@ class Runner:
             # BA optimizer has a learning rate schedule, decays to 1% of initial value
             schedulers.append(
                 torch.optim.lr_scheduler.ExponentialLR(
-                    self.ba_optimizers[0], gamma=0.01 ** (1.0 / effective_max_steps)
+                    self.ba_optimizers[0], gamma=0.01 ** (1.0 / lr_schedule_steps)
                 )
             )
 
@@ -1528,7 +1580,7 @@ class Runner:
         global_tic = time.time()
         step = init_step
         pbar = tqdm.tqdm(total=effective_max_steps, initial=init_step)
-        for epoch in range(cfg.num_epochs):
+        for epoch in range(epochs_to_run):
             if step >= effective_max_steps:
                 break
             for data in trainloader:
@@ -1914,37 +1966,6 @@ class Runner:
                             log_dict["train/render"] = wandb.Image(canvas)
                         wandb.log(log_dict, step=step)
 
-                # save checkpoint before updating the model
-                if step in save_steps or step == effective_max_steps - 1:
-                    mem = torch.cuda.max_memory_allocated() / 1024**3
-                    stats = {
-                        "mem": mem,
-                        "ellipse_time": time.time() - global_tic,
-                        "num_GS": len(self.splats["means"]),
-                    }
-                    print("Step: ", step, stats)
-                    with open(
-                        f"{self.stats_dir}/train_step{step:04d}_rank{self.world_rank}.json",
-                        "w",
-                    ) as f:
-                        json.dump(stats, f)
-                    ckpt_data = {"step": step, "splats": self.splats.state_dict()}
-                    if cfg.pose_opt:
-                        if world_size > 1:
-                            ckpt_data["pose_adjust"] = self.pose_adjust.module.state_dict()
-                            ckpt_data["pose_adjust_test"] = self.pose_adjust_test.module.state_dict()
-                        else:
-                            ckpt_data["pose_adjust"] = self.pose_adjust.state_dict()
-                            ckpt_data["pose_adjust_test"] = self.pose_adjust_test.state_dict()
-                    if cfg.app_opt:
-                        if world_size > 1:
-                            ckpt_data["app_module"] = self.app_module.module.state_dict()
-                        else:
-                            ckpt_data["app_module"] = self.app_module.state_dict()
-                    torch.save(
-                        ckpt_data, f"{self.ckpt_dir}/ckpt_{step}_rank{self.world_rank}.pt"
-                    )
-
                 # Turn Gradients into Sparse Tensor before running optimizer
                 if cfg.sparse_grad:
                     assert cfg.packed, "Sparse gradients only work with packed mode."
@@ -1998,21 +2019,38 @@ class Runner:
                 if isinstance(self.cfg.strategy, ImportanceGuidedMCMCStrategy):
                     strategy = self.cfg.strategy
                     need_scores = (
-                        step > strategy.refine_start_iter
+                        step >= cfg.fastgs_score_warmup_step
                         and step < strategy.refine_stop_iter
-                        and step % strategy.refine_every == 0
+                        and (step - cfg.fastgs_score_warmup_step)
+                        % max(1, cfg.fastgs_score_every) == 0
                     )
                     if need_scores:
                         importance_score, redundancy_score = self.compute_fastgs_scores(
                             sh_degree=sh_degree_to_use, num_views=cfg.fastgs_num_views
                         )
+                        if world_rank == 0:
+                            imp_q = torch.quantile(
+                                importance_score.float(),
+                                torch.tensor([0.5, 0.9, 0.99], device=device),
+                            )
+                            red_q = torch.quantile(
+                                redundancy_score.float(),
+                                torch.tensor([0.5, 0.9, 0.99], device=device),
+                            )
+                            print(
+                                f"Step {step}: score stats "
+                                f"importance(mean/p50/p90/p99/max)="
+                                f"{importance_score.float().mean():.4f}/"
+                                f"{imp_q[0]:.4f}/{imp_q[1]:.4f}/{imp_q[2]:.4f}/"
+                                f"{importance_score.float().max():.4f}, "
+                                f"redundancy(mean/p50/p90/p99/max)="
+                                f"{redundancy_score.float().mean():.4f}/"
+                                f"{red_q[0]:.4f}/{red_q[1]:.4f}/{red_q[2]:.4f}/"
+                                f"{redundancy_score.float().max():.4f}"
+                            )
                         self.strategy_state["fastgs_importance"] = importance_score
                         self.strategy_state["fastgs_redundancy"] = redundancy_score
                         self.strategy_state["fastgs_pruning"] = redundancy_score
-                    else:
-                        self.strategy_state["fastgs_importance"] = None
-                        self.strategy_state["fastgs_redundancy"] = None
-                        self.strategy_state["fastgs_pruning"] = None
 
                 # Run post-backward steps after backward and optimizer
                 if isinstance(self.cfg.strategy, DefaultStrategy):
@@ -2035,6 +2073,37 @@ class Runner:
                     )
                 else:
                     raise ValueError(f"Unknown strategy type: {type(self.cfg.strategy)}")
+
+                # Save the exact post-update state that is evaluated below.
+                if step in save_steps or step == effective_max_steps - 1:
+                    mem = torch.cuda.max_memory_allocated() / 1024**3
+                    stats = {
+                        "mem": mem,
+                        "ellipse_time": time.time() - global_tic,
+                        "num_GS": len(self.splats["means"]),
+                    }
+                    print("Step: ", step, stats)
+                    with open(
+                        f"{self.stats_dir}/train_step{step:04d}_rank{self.world_rank}.json",
+                        "w",
+                    ) as f:
+                        json.dump(stats, f)
+                    ckpt_data = {"step": step, "splats": self.splats.state_dict()}
+                    if cfg.pose_opt:
+                        if world_size > 1:
+                            ckpt_data["pose_adjust"] = self.pose_adjust.module.state_dict()
+                            ckpt_data["pose_adjust_test"] = self.pose_adjust_test.module.state_dict()
+                        else:
+                            ckpt_data["pose_adjust"] = self.pose_adjust.state_dict()
+                            ckpt_data["pose_adjust_test"] = self.pose_adjust_test.state_dict()
+                    if cfg.app_opt:
+                        if world_size > 1:
+                            ckpt_data["app_module"] = self.app_module.module.state_dict()
+                        else:
+                            ckpt_data["app_module"] = self.app_module.state_dict()
+                    torch.save(
+                        ckpt_data, f"{self.ckpt_dir}/ckpt_{step}_rank{self.world_rank}.pt"
+                    )
 
                 # eval the full set (both train and val)
                 if step in eval_steps:
@@ -2136,6 +2205,8 @@ class Runner:
                     for optimizer in self.pose_optimizers_test:
                         optimizer.step()
                         optimizer.zero_grad(set_to_none=True)
+                    if test_pose_scheduler is not None:
+                        test_pose_scheduler.step()
                     if test_ba_active:
                         for optimizer in self.ba_optimizers:
                             optimizer.step()

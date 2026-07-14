@@ -11,6 +11,7 @@ This script performs efficient image pair matching by:
 """
 
 import argparse
+import functools
 import os
 import shutil
 import sqlite3
@@ -34,6 +35,19 @@ def _require_colmap() -> str:
     if colmap_path is None:
         raise RuntimeError("COLMAP executable not found in PATH")
     return colmap_path
+
+
+@functools.lru_cache(maxsize=None)
+def _colmap_help(command: str) -> str:
+    """Return command help for option-name compatibility across COLMAP releases."""
+    result = subprocess.run(
+        [_require_colmap(), command, "-h"], capture_output=True, text=True
+    )
+    return (result.stdout or "") + (result.stderr or "")
+
+
+def _colmap_group(command: str, modern: str, legacy: str) -> str:
+    return modern if f"--{modern}." in _colmap_help(command) else legacy
 
 
 def _pair_id_to_image_ids(pair_id: int) -> Tuple[int, int]:
@@ -264,20 +278,23 @@ def extract_sift_features(
     colmap_path = _require_colmap()
 
     # Build the feature_extractor command
+    feature_group = _colmap_group(
+        "feature_extractor", "FeatureExtraction", "SiftExtraction"
+    )
     cmd = [
         colmap_path,
         "feature_extractor",
         "--database_path", database_path,
         "--image_path", image_dir,
         "--ImageReader.camera_model", camera_model,
-        "--SiftExtraction.num_threads", str(num_threads),
+        f"--{feature_group}.num_threads", str(num_threads),
         "--SiftExtraction.max_num_features", str(max_num_features),
         "--SiftExtraction.max_image_size", str(max_image_size),
-        "--SiftExtraction.use_gpu", "1" if use_gpu else "0",
+        f"--{feature_group}.use_gpu", "1" if use_gpu else "0",
     ]
 
     if use_gpu:
-        cmd.extend(["--SiftExtraction.gpu_index", gpu_index])
+        cmd.extend([f"--{feature_group}.gpu_index", gpu_index])
 
     logger.info(f"Command: {' '.join(cmd)}")
 
@@ -827,16 +844,19 @@ def import_and_match_pairs(
     # Find colmap executable
     colmap_path = _require_colmap()
 
+    matching_group = _colmap_group(
+        "matches_importer", "FeatureMatching", "SiftMatching"
+    )
     cmd = [
         colmap_path,
         "matches_importer",
         "--database_path", database_path,
         "--match_list_path", pairs_path,
         "--match_type", "pairs",
-        "--SiftMatching.num_threads", str(num_threads),
-        "--SiftMatching.use_gpu", "1" if use_gpu else "0",
-        "--SiftMatching.guided_matching", "1" if guided_matching else "0",
-        "--SiftMatching.max_num_matches", str(max_num_matches),
+        f"--{matching_group}.num_threads", str(num_threads),
+        f"--{matching_group}.use_gpu", "1" if use_gpu else "0",
+        f"--{matching_group}.guided_matching", "1" if guided_matching else "0",
+        f"--{matching_group}.max_num_matches", str(max_num_matches),
         "--SiftMatching.max_ratio", str(max_ratio),
         "--SiftMatching.max_distance", str(max_distance),
         "--SiftMatching.cross_check", "1" if cross_check else "0",
@@ -850,7 +870,7 @@ def import_and_match_pairs(
     ]
 
     if use_gpu:
-        cmd.extend(["--SiftMatching.gpu_index", gpu_index])
+        cmd.extend([f"--{matching_group}.gpu_index", gpu_index])
 
     logger.info(f"Command: {' '.join(cmd)}")
 

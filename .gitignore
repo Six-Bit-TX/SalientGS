@@ -2,6 +2,10 @@
 data/
 benchmarks/mipnerf360
 results/
+!results/
+results/*
+!results/README.md
+!results/paper_reproduction_seed42.csv
 __pycache__/
 *.py[cod]
 *$py.class
