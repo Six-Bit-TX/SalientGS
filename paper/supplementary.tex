@@ -24,6 +24,7 @@
 \pagestyle{plain}
 
 \begin{document}
+\setlength{\emergencystretch}{2em}
 
 \title{SalientGS: Supplementary Material}
 
@@ -61,6 +62,7 @@
 This supplementary material accompanies the main paper \emph{``SalientGS: Unified SfM-to-3DGS with Importance-Guided MCMC Gaussian Allocation.''}
 We provide:
 \begin{itemize}
+    \item A released-code cross-benchmark verification with an explicit macro-average protocol (\S\ref{sec:supp_release_verification}).
     \item A large-scene benchmark comparison (\S\ref{sec:supp_large_scene}).
     \item Full SfM runtime tables for the Courthouse scene (\S\ref{sec:supp_runtime}).
     \item Full per-scene qualitative comparisons on all nine Mip-NeRF 360 scenes (\S\ref{sec:supp_qualitative}).
@@ -68,6 +70,69 @@ We provide:
     \item Threshold-sensitivity sweeps for $\tau_{\text{imp}}$ and the number of scoring views $K$ (\S\ref{sec:supp_threshold}).
     \item Analysis of the SalientGS front-end: track-length distributions and a controlled track-cap ablation establishing that sufficient multi-view track coverage is a prerequisite for high reconstruction quality (\S\ref{sec:supp_track_analysis}).
 \end{itemize}
+
+\section{Released-Code Cross-Benchmark Verification}
+\label{sec:supp_release_verification}
+
+Table~\ref{tab:supp_cross_benchmark} macro-averages the three dataset-level entries in the main paper, assigning equal weight to Mip-NeRF 360, Deep Blending, and Tanks \& Temples. This is a cross-dataset summary, not a replacement for the individual benchmark results. Failed scenes remain in the corresponding dataset aggregate; notably, the \textit{drjohnson} failures of GloSplat-A and VGGT-X are included rather than discarded. Under this explicit protocol, SalientGS has the best macro-average quality and runtime in the comparison. Its advantage reflects consistency across datasets: it is the only method with a top-two LPIPS result on every benchmark.
+
+\begin{table}[t]
+    \centering
+    \footnotesize
+    \setlength\tabcolsep{4pt}
+    \caption{Cross-benchmark macro-average of the three dataset-level entries in the main comparison. Time is end-to-end minutes; each benchmark receives equal weight.}
+    \label{tab:supp_cross_benchmark}
+    \begin{tabular}{lrrrr}
+        \toprule
+        Method & Time$\downarrow$ & PSNR$\uparrow$ & SSIM$\uparrow$ & LPIPS$\downarrow$ \\
+        \midrule
+        3DGS & 28.35 & 26.98 & 0.855 & 0.211 \\
+        3DGS-MCMC & 28.85 & 27.40 & 0.872 & 0.191 \\
+        Mini-Splatting & 24.37 & 26.92 & 0.857 & 0.214 \\
+        Speedy-splat & 21.15 & 26.57 & 0.832 & 0.270 \\
+        Taming-3DGS & 14.71 & 26.96 & 0.840 & 0.251 \\
+        DashGaussian & 15.93 & 27.13 & 0.859 & 0.214 \\
+        FastGS-big & 13.54 & 27.48 & 0.861 & 0.211 \\
+        GloSplat-A & 22.01 & 23.15 & 0.750 & 0.265 \\
+        VGGT-X & 64.02 & 22.60 & 0.741 & 0.287 \\
+        \textbf{SalientGS} & \textbf{10.62} & \textbf{27.65} & \textbf{0.876} & \textbf{0.147} \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+The released per-scene CSV uses seed 42, exactly 30K optimization steps, and a 1.5M Gaussian cap. All 13 runs execute feature extraction, matching, SfM, and training; reference sparse models are not used. For Mip-NeRF 360, the scene-equal aggregate used in the main comparison is 28.822 / 0.853 / 0.148 (PSNR / SSIM / LPIPS). Pooling all held-out images instead gives 29.607 / 0.874 / 0.140 because scenes contain different numbers of test images. We report the latter only as a diagnostic and never compare it against scene-averaged baselines.
+
+\begin{table*}[t]
+    \centering
+    \footnotesize
+    \setlength\tabcolsep{5pt}
+    \caption{Released-code verification by scene. Time includes feature extraction, matching, SfM, and 30K-step training on one RTX PRO 6000 Blackwell GPU. Every final model contains 1.5M Gaussians.}
+    \label{tab:supp_release_per_scene}
+    \begin{tabular}{llrrrr}
+        \toprule
+        Dataset & Scene & PSNR$\uparrow$ & SSIM$\uparrow$ & LPIPS$\downarrow$ & Time (min)$\downarrow$ \\
+        \midrule
+        \multirow{9}{*}{Mip-NeRF 360}
+        & bicycle & 27.125 & 0.828 & 0.135 & 10.37 \\
+        & bonsai & 33.207 & 0.955 & 0.106 & 13.53 \\
+        & counter & 29.604 & 0.919 & 0.136 & 14.03 \\
+        & flowers & 22.826 & 0.661 & 0.274 & 10.48 \\
+        & garden & 29.188 & 0.894 & 0.074 & 10.33 \\
+        & kitchen & 32.786 & 0.943 & 0.076 & 13.57 \\
+        & room & 31.945 & 0.928 & 0.150 & 12.72 \\
+        & stump & 28.310 & 0.836 & 0.123 & 10.86 \\
+        & treehill & 24.407 & 0.714 & 0.260 & 10.20 \\
+        \midrule
+        \multirow{2}{*}{Deep Blending}
+        & drjohnson & 28.824 & 0.892 & 0.210 & 10.69 \\
+        & playroom & 30.153 & 0.920 & 0.156 & 9.39 \\
+        \midrule
+        \multirow{2}{*}{Tanks \& Temples}
+        & train & 23.003 & 0.846 & 0.128 & 10.32 \\
+        & truck & 26.306 & 0.893 & 0.090 & 9.73 \\
+        \bottomrule
+    \end{tabular}
+\end{table*}
 
 %% =============================================================================
 %% Large-Scene Benchmark Comparison
@@ -84,6 +149,7 @@ We provide:
         \textbf{Large-scene benchmark comparison.}
         Metrics are SSIM$\uparrow$, PSNR$\uparrow$, and LPIPS$\downarrow$. Red / orange / yellow denote the best / second-best / third-best values in each column.
     }
+    \resizebox{\textwidth}{!}{%
     \begin{tabular}{lcccccccccccc}
         \toprule
         & \multicolumn{3}{c}{Building} & \multicolumn{3}{c}{Rubble} & \multicolumn{3}{c}{Residence} & \multicolumn{3}{c}{Sci-Art} \\
@@ -170,7 +236,8 @@ We provide:
             & \cellcolor{tabthird}0.816 & \cellcolor{tabfirst}\bf 22.67 & \cellcolor{tabfirst}\bf 0.193
             & \cellcolor{tabsecond}0.857 & 22.91 & \cellcolor{tabfirst}\bf 0.173 \\
         \bottomrule
-    \end{tabular}
+    \end{tabular}%
+    }
     \label{tab:supp_large_scene}
 \end{table*}
 
@@ -192,6 +259,7 @@ Table~\ref{tab:supp_sfm_runtime} reports the full SfM component runtime on the C
     \caption{
         \textbf{SfM runtime comparison (seconds).} We compare the SfM component runtime across different methods on the Courthouse scene with varying numbers of input images. SalientGS combines Fisher Vector retrieval with first-order SfM optimization to achieve significant speedups over traditional and learning-based approaches.
     }
+    \resizebox{\columnwidth}{!}{%
     \begin{tabular}{r rrrrrr}
         \toprule
         \# Images & COLMAP & MASt3R & GloSplat-A & VGGT-X & GloSplat-F & SalientGS \\
@@ -201,7 +269,8 @@ Table~\ref{tab:supp_sfm_runtime} reports the full SfM component runtime on the C
         750  & 2226.3 & 978.5 & 855.7  & 249.6 & 250.0 & \textbf{138.5} \\
         1000 & 4349.2 & 1308.2 & 1371.3 & 398.9 & 327.8 & \textbf{186.1} \\
         \bottomrule
-    \end{tabular}
+    \end{tabular}%
+    }
     \label{tab:supp_sfm_runtime}
 \end{table}
 
@@ -293,9 +362,7 @@ On \textit{room}, SalientGS underperforms VGGT-X on flat, textureless surfaces w
 \section{Per-Image LPIPS Analysis}
 \label{sec:supp_per_image_lpips}
 
-Table~\ref{tab:supp_per_scene_lpips} reports per-scene LPIPS (lower is better) for each Mip-NeRF 360 scene across SalientGS and three ablation variants. The scene rows are per-scene means, while the final row is the pooled mean over all rendered test images; it is therefore not an unweighted average of the nine scene rows.
-SalientGS achieves the best LPIPS on all 9 scenes, with its strongest absolute margins on outdoor scenes with complex textures (\textit{bicycle}, \textit{flowers}, \textit{stump}, \textit{treehill}).
-The indoor margins are smaller, consistent with the reduced benefit of importance-guided allocation on scenes with uniform textures, though SalientGS still leads its ablation variants on \textit{bonsai}, \textit{kitchen}, and \textit{room}.
+Table~\ref{tab:supp_per_scene_lpips} combines the released SalientGS verification with the controlled camera-ready ablation measurements. At full precision, SalientGS improves over vanilla MCMC on seven scenes and trails it on \textit{flowers} and \textit{counter}; \textit{garden} and \textit{treehill} appear tied after rounding. Its nine-scene mean is substantially lower (0.148 vs.\ 0.189). Because the columns come from two documented experiment snapshots, this table is descriptive; causal allocator conclusions are drawn from the matched controlled tables in \S\ref{sec:supp_camera_ready_ablations}.
 
 \begin{table}[t]
     \centering
@@ -303,28 +370,31 @@ The indoor margins are smaller, consistent with the reduced benefit of importanc
     \setlength\tabcolsep{3pt}
     \caption{
         \textbf{Mean per-image LPIPS ($\downarrow$) on Mip-NeRF 360 scenes.}
-        Scene rows show per-scene means; the final row is the pooled test-image mean. Best result per scene in \textbf{bold}.
+        Scene rows show per-scene means. We report both the scene-equal mean used in the main comparison and the pooled test-image diagnostic. Best displayed result per scene in \textbf{bold}.
     }
+    \resizebox{\columnwidth}{!}{%
     \begin{tabular}{l cccc}
         \toprule
         Scene & SalientGS & Vanilla MCMC & Std.\ ADC & Freeze Poses \\
         \midrule
         \multicolumn{5}{l}{\textit{Outdoor Scenes}} \\
-        \quad bicycle   & \textbf{0.088} & 0.152 & 0.153 & 0.173 \\
-        \quad flowers   & \textbf{0.201} & 0.264 & 0.309 & 0.293 \\
-        \quad garden    & \textbf{0.018} & 0.074 & 0.066 & 0.081 \\
-        \quad stump     & \textbf{0.075} & 0.140 & 0.145 & 0.151 \\
-        \quad treehill  & \textbf{0.186} & 0.260 & 0.269 & 0.270 \\
+        \quad bicycle   & \textbf{0.135} & 0.152 & 0.153 & 0.173 \\
+        \quad flowers   & 0.274 & \textbf{0.264} & 0.309 & 0.293 \\
+        \quad garden    & 0.074 & 0.074 & \textbf{0.066} & 0.081 \\
+        \quad stump     & \textbf{0.123} & 0.140 & 0.145 & 0.151 \\
+        \quad treehill  & \textbf{0.260} & \textbf{0.260} & 0.269 & 0.270 \\
         \midrule
         \multicolumn{5}{l}{\textit{Indoor Scenes}} \\
-        \quad bonsai    & \textbf{0.143} & 0.169 & 0.171 & 0.170 \\
-        \quad counter   & \textbf{0.079} & 0.132 & 0.148 & 0.134 \\
-        \quad kitchen   & \textbf{0.155} & 0.236 & 0.167 & 0.173 \\
-        \quad room      & \textbf{0.230} & 0.271 & 0.252 & 0.271 \\
+        \quad bonsai    & \textbf{0.106} & 0.169 & 0.171 & 0.170 \\
+        \quad counter   & 0.136 & \textbf{0.132} & 0.148 & 0.134 \\
+        \quad kitchen   & \textbf{0.076} & 0.236 & 0.167 & 0.173 \\
+        \quad room      & \textbf{0.150} & 0.271 & 0.252 & 0.271 \\
         \midrule
-        \textbf{Average}& \textbf{0.131} & 0.189 & 0.187 & 0.191 \\
+        \textbf{Scene mean}& \textbf{0.148} & 0.189 & 0.187 & 0.192 \\
+        \textbf{Pooled images}& \textbf{0.140} & 0.189 & 0.187 & 0.191 \\
         \bottomrule
-    \end{tabular}
+    \end{tabular}%
+    }
     \label{tab:supp_per_scene_lpips}
 \end{table}
 
@@ -336,7 +406,7 @@ The indoor margins are smaller, consistent with the reduced benefit of importanc
 
 Table~\ref{tab:supp_threshold} reports the Mip-NeRF 360 sensitivity sweep referenced in the main paper. We vary the importance threshold $\tau_{\text{imp}}$ and the number of views $K$ used for multi-view score computation while keeping the rest of the pipeline fixed.
 
-The default setting in the main paper is $\tau_{\text{imp}}{=}5$ and $K{=}10$, corresponding to the full model. PSNR and SSIM vary mildly across nearby settings, while LPIPS is more sensitive to perceptual blur and high-frequency detail; we therefore report the three metrics separately rather than summarizing robustness with a single PSNR range.
+The controlled camera-ready setting uses $\tau_{\text{imp}}{=}5$ and $K{=}10$. PSNR and SSIM vary mildly across nearby settings, while LPIPS is more sensitive to perceptual blur and high-frequency detail; we therefore report the three metrics separately rather than summarizing robustness with a single PSNR range. These matched sensitivity values establish the parameter choice but are not substituted for the later released-code aggregate.
 
 \begin{table}[t]
     \centering
@@ -344,8 +414,9 @@ The default setting in the main paper is $\tau_{\text{imp}}{=}5$ and $K{=}10$, c
     \setlength\tabcolsep{4pt}
     \caption{
         \textbf{Threshold-sensitivity sweep on Mip-NeRF 360.}
-        We vary the importance threshold $\tau_{\text{imp}}$ and the number of scoring views $K$. The default configuration used in the main paper is marked as \emph{default}.
+        We vary the importance threshold $\tau_{\text{imp}}$ and the number of scoring views $K$ in the controlled camera-ready experiment set. The selected configuration is marked as \emph{default}.
     }
+    \resizebox{\columnwidth}{!}{%
     \begin{tabular}{l c ccc}
         \toprule
         Group & Value & PSNR$\uparrow$ & SSIM$\uparrow$ & LPIPS$\downarrow$ \\
@@ -364,7 +435,8 @@ The default setting in the main paper is $\tau_{\text{imp}}{=}5$ and $K{=}10$, c
         & 15 & 28.714 & 0.8450 & 0.157 \\
         & 20 & 28.679 & 0.8446 & 0.157 \\
         \bottomrule
-    \end{tabular}
+    \end{tabular}%
+    }
     \label{tab:supp_threshold}
 \end{table}
 
@@ -386,6 +458,7 @@ The MST connectivity guarantee built into SalientGS's Fisher Vector retrieval (S
 \centering
 \caption{Track-length distribution on the \texttt{bicycle} scene for GloSplat-A (SIFT exhaustive), GloSplat-F (XFeat+LightGlue, retrieval top-5), and SalientGS (Fisher Vector, $k{=}20$).}
 \label{tab:track_dist}
+\resizebox{\columnwidth}{!}{%
 \begin{tabular}{lrrr}
 \toprule
  & GloSplat-A & GloSplat-F & SalientGS \\
@@ -399,19 +472,21 @@ Max & 74 & 20 & 71 \\
 9--16 & 4{,}694\phantom{0} (8.6\%) & 948\phantom{00} (2.1\%) & 4{,}133\phantom{0} (8.0\%) \\
 17+   & 684\phantom{00} (1.3\%) & 11\phantom{000} (0.0\%) & 776\phantom{00} (1.5\%) \\
 \bottomrule
-\end{tabular}
+\end{tabular}%
+}
 \end{table}
 
 \paragraph{Track-Length Cap Ablation.}
 To establish causality between track length and downstream rendering quality, we conduct a controlled ablation: we fix each method's front-end (i.e., the same pair graph and matches) and vary only the maximum number of observations retained per track before global positioning and bundle adjustment. Table~\ref{tab:track_cap} reports the effect on Mip-NeRF 360 (averaged over 9 scenes).
 The $L{=}2$ condition reduces every track to a pairwise observation---simulating a worst-case version of the track shortening seen in GloSplat-F---while $L{=}\text{all}$ retains the full distribution.
 For GloSplat (SIFT exhaustive front-end), capping at $L{=}2$ causes a 1.40\,dB PSNR drop (28.86\,$\to$\,27.46), confirming that long multi-view tracks provide substantial geometric constraints that improve triangulation robustness and stabilize bundle adjustment.
-SalientGS exhibits a nearly identical degradation of 1.36\,dB (28.89\,$\to$\,27.53) under the same $L{=}2$ cap. This convergence is expected: once every track is reduced to a pairwise observation, both pipelines operate on geometrically equivalent constraints regardless of their front-end or allocation strategy, leaving the underlying bundle adjustment quality as the dominant factor. The full-track advantage ($L{=}\text{all}$) therefore reflects a shared structural property of multi-view triangulation rather than any method-specific component, further reinforcing that sufficient track length is a prerequisite for high reconstruction quality independent of the downstream renderer.
+In the matched track-cap experiment, SalientGS exhibits a nearly identical degradation of 1.36\,dB (28.89\,$\to$\,27.53) under the same $L{=}2$ cap. This controlled full-track value belongs to the camera-ready experiment snapshot and should not be substituted for the later released-code aggregate in the main table. Once every track is reduced to a pairwise observation, both pipelines operate on geometrically equivalent constraints regardless of their front-end or allocation strategy, leaving the underlying bundle adjustment quality as the dominant factor.
 
 \begin{table}[t]
 \centering
 \caption{Track-length cap ablation on MipNeRF360 (9-scene avg.). The front-end is fixed for each method; only the maximum retained observations per track varies.}
 \label{tab:track_cap}
+\resizebox{\columnwidth}{!}{%
 \begin{tabular}{lccc}
 \toprule
 Max track length & PSNR\,$\uparrow$ & SSIM\,$\uparrow$ & LPIPS\,$\downarrow$ \\
@@ -425,12 +500,13 @@ Max track length & PSNR\,$\uparrow$ & SSIM\,$\uparrow$ & LPIPS\,$\downarrow$ \\
 \multicolumn{4}{l}{\textit{SalientGS (Fisher Vector $k{=}20$ front-end)}} \\
 \quad $L = 2$          & 27.53 & 0.808 & 0.172 \\
 \quad $L = \text{all}$ & \textbf{28.89} & \textbf{0.857} & \textbf{0.131} \\
-\quad \textit{SalientGS (full model, ref.)}   & \textit{28.89} & \textit{0.857} & \textit{0.131} \\
+\quad \textit{Controlled full model (ref.)}   & \textit{28.89} & \textit{0.857} & \textit{0.131} \\
 \bottomrule
-\end{tabular}
+\end{tabular}%
+}
 \end{table}
 
-\noindent Taken together, these results support two conclusions. First, SalientGS's Fisher Vector retrieval with $k{=}20$ and MST connectivity is sufficient to recover an exhaustive-quality track distribution at a fraction of the matching cost, closing the structural gap that limits GloSplat-F. Second, the near-identical $L{=}2$ scores across both methods confirm that the gain from full tracks is a property of multi-view triangulation geometry, not of any particular front-end or allocation design---making rich track coverage a necessary condition for state-of-the-art reconstruction quality.
+\noindent Taken together, these results support two conclusions. First, SalientGS's Fisher Vector retrieval with $k{=}20$ and MST connectivity is sufficient to recover an exhaustive-quality track distribution at a fraction of the matching cost, closing the structural gap that limits GloSplat-F. Second, the near-identical $L{=}2$ scores across both methods confirm that the gain from full tracks is a property of multi-view triangulation geometry, not of any particular front-end or allocation design---making rich track coverage a necessary condition for high-quality reconstruction.
 
 %% =============================================================================
 %% Additional camera-ready experiments from the rebuttal
@@ -438,7 +514,7 @@ Max track length & PSNR\,$\uparrow$ & SSIM\,$\uparrow$ & LPIPS\,$\downarrow$ \\
 \section{Additional Camera-Ready Ablations}
 \label{sec:supp_camera_ready_ablations}
 
-This section records the additional measured experiments completed during the author response. The results are included to make the source-of-gain decomposition, schedule choices, and fixed-budget behavior explicit.
+This section records the matched experiments completed during the author response. They use a common camera-ready software snapshot and are retained to isolate source-of-gain, schedule, and fixed-budget effects. Their within-table deltas are valid; their absolute full-model value is not presented as the later released-code verification result.
 
 \begin{table*}[t]
     \centering
@@ -527,10 +603,10 @@ The controlled matrix in Table~\ref{tab:supp_init_allocator} shows that guided a
         Scene & Method & PSNR$\uparrow$ & SSIM$\uparrow$ & LPIPS$\downarrow$ \\
         \midrule
         \textit{playroom} & GloSplat-A & 29.38 & 0.903 & 0.224 \\
-        \textit{playroom} & SalientGS & \textbf{30.36} & \textbf{0.926} & \textbf{0.140} \\
+        \textit{playroom} & SalientGS & \textbf{30.15} & \textbf{0.920} & \textbf{0.156} \\
         \textit{drjohnson} & GloSplat-A & 7.52 & 0.263 & 0.792 \\
         \textit{drjohnson} & VGGT-X & 7.65 & 0.337 & 0.858 \\
-        \textit{drjohnson} & SalientGS & \textbf{29.62} & \textbf{0.916} & \textbf{0.148} \\
+        \textit{drjohnson} & SalientGS & \textbf{28.82} & \textbf{0.892} & \textbf{0.210} \\
         \bottomrule
     \end{tabular}
 \end{table}
@@ -565,11 +641,11 @@ The controlled matrix in Table~\ref{tab:supp_init_allocator} shows that guided a
         \toprule
         Scene & SG PSNR & V+M PSNR & SG LPIPS & V+M LPIPS \\
         \midrule
-        bonsai & 33.58 & 30.71 & 0.105 & 0.139 \\
-        counter & 29.59 & 28.80 & 0.137 & 0.158 \\
-        kitchen & 32.91 & 29.68 & 0.077 & 0.113 \\
-        room & 32.04 & 30.76 & 0.149 & 0.165 \\
-        Average & \textbf{32.03} & 29.99 & \textbf{0.117} & 0.144 \\
+        bonsai & 33.21 & 30.71 & 0.106 & 0.139 \\
+        counter & 29.60 & 28.80 & 0.136 & 0.158 \\
+        kitchen & 32.79 & 29.68 & 0.076 & 0.113 \\
+        room & 31.95 & 30.76 & 0.150 & 0.165 \\
+        Average & \textbf{31.89} & 29.99 & \textbf{0.117} & 0.144 \\
         \bottomrule
     \end{tabular}
 \end{table}
@@ -579,6 +655,7 @@ The controlled matrix in Table~\ref{tab:supp_init_allocator} shows that guided a
     \footnotesize
     \caption{Additional large-scene and drone-capture evidence.}
     \label{tab:supp_large_scene_summary}
+    \resizebox{\columnwidth}{!}{%
     \begin{tabular}{ll}
         \toprule
         Setting & Result \\
@@ -588,7 +665,8 @@ The controlled matrix in Table~\ref{tab:supp_init_allocator} shows that guided a
         Four large scenes & Best PSNR/LPIPS on 3 of 4 scenes \\
         Runtime/memory & $\sim$1~h / $\sim$5~GB vs. $\sim$3~h / $\sim$14~GB for CityGS-X \\
         \bottomrule
-    \end{tabular}
+    \end{tabular}%
+    }
 \end{table}
 
 \begin{table}[t]
@@ -596,6 +674,7 @@ The controlled matrix in Table~\ref{tab:supp_init_allocator} shows that guided a
     \footnotesize
     \caption{Failure diagnostics and fallback on representative Mip-NeRF 360 scenes. Residual is the normalized early epipolar residual.}
     \label{tab:supp_failure}
+    \resizebox{\columnwidth}{!}{%
     \begin{tabular}{lrrrr}
         \toprule
         Scene & Median track & Mean degree & MST reliance & Residual \\
@@ -606,7 +685,8 @@ The controlled matrix in Table~\ref{tab:supp_init_allocator} shows that guided a
         \midrule
         \multicolumn{5}{l}{\textit{room LPIPS: original 0.312; fallback 0.235; VGGT-X 0.244}} \\
         \bottomrule
-    \end{tabular}
+    \end{tabular}%
+    }
 \end{table}
 
 The diagnostics in Table~\ref{tab:supp_failure} identify the texture-poor \textit{room} case through collapsed track length, greater MST reliance, and a high early residual. A feed-forward fallback improves the failure-view LPIPS from 0.312 to 0.235, slightly better than the VGGT-X reference of 0.244. Sparse/few-view reconstruction and severe repetitive or symmetric appearance remain limitations; learned retrieval and adaptive geometry-aware budgets are natural future extensions.

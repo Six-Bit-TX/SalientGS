@@ -62,7 +62,7 @@
 
     <section>
       <h2>Abstract</h2>
-      <p class="abstract">Reconstructing 3D scenes from unordered images remains bottlenecked by expensive Structure-from-Motion preprocessing and frozen pose interfaces. SalientGS is a unified SfM-to-3DGS pipeline whose central contribution is importance-guided MCMC Gaussian allocation. Multi-view residuals define per-Gaussian underfit and redundancy signals, which bias both birth and relocation toward underfit regions while preserving the underlying stochastic gradient Langevin dynamics. The result is fast end-to-end reconstruction with strong perceptual quality under a fixed Gaussian budget.</p>
+      <p class="abstract">Reconstructing 3D scenes from unordered images remains bottlenecked by expensive Structure-from-Motion preprocessing and frozen pose interfaces. SalientGS is a unified SfM-to-3DGS pipeline whose central contribution is importance-guided MCMC Gaussian allocation. In the released 13-scene verification, SalientGS achieves the best three-benchmark macro-average PSNR, SSIM, LPIPS, and end-to-end runtime among the compared methods, while using a fixed 1.5M-Gaussian budget.</p>
     </section>
 
     <section>
@@ -89,11 +89,12 @@
             <tr><td>3DGS-MCMC</td><td>28.01</td><td>0.186</td><td>0.237</td><td>0.149</td></tr>
             <tr><td>GloSplat-A</td><td>28.86</td><td>0.139</td><td>0.508*</td><td>0.147</td></tr>
             <tr><td>VGGT-X</td><td>26.49</td><td>0.177</td><td>0.545†</td><td>0.138</td></tr>
-            <tr class="ours"><td>SalientGS</td><td>28.89</td><td>0.131</td><td>0.144</td><td>0.084</td></tr>
+            <tr class="ours"><td>SalientGS</td><td>28.82</td><td>0.148</td><td>0.183</td><td>0.109</td></tr>
           </tbody>
         </table>
       </div>
       <p><small>* GloSplat-A and † VGGT-X fail on the Deep Blending <i>drjohnson</i> scene.</small></p>
+      <p><strong>Cross-benchmark macro-average:</strong> SalientGS obtains 27.65 dB PSNR, 0.876 SSIM, 0.147 LPIPS, and 10.62 minutes end-to-end. Each benchmark receives equal weight and failed scenes remain included.</p>
     </section>
 
     <section>

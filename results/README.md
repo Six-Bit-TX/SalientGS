@@ -20,7 +20,11 @@ For Mip-NeRF 360, pooling by held-out image count gives 29.607 PSNR, 0.874
 SSIM, and 0.140 LPIPS. Different papers may use either scene means or pooled
 image means, so both are stated explicitly rather than mixed.
 
-The run is a reproducibility record, not a replacement for the camera-ready
-paper table: hardware, library versions, scene aggregation, and upstream metric
+Giving each of the three benchmark aggregates equal weight yields 27.65 PSNR,
+0.876 SSIM, 0.147 LPIPS, and 10.62 minutes. This cross-benchmark macro-average
+includes failed scenes for every comparison method and is the overall summary
+reported in the revised manuscript.
+
+Hardware, library versions, scene aggregation, and upstream metric
 implementations can shift the final decimals. Raw scene values are retained in
 the CSV so comparisons can be recomputed without relying on rounded aggregates.

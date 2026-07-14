@@ -8,6 +8,7 @@ Paper: [`paper/main.pdf`](paper/main.pdf) · Supplementary: [`paper/supplementar
 
 ## Highlights
 
+- Across Mip-NeRF 360, Deep Blending, and Tanks & Temples, the released 13-scene verification gives the best equal-benchmark macro-average PSNR/SSIM/LPIPS (27.65 dB / 0.876 / 0.147) and the fastest end-to-end runtime (10.62 minutes) among the methods compared in the paper; failed scenes remain included in the aggregate.
 - Importance-guided MCMC reallocates a fixed Gaussian budget toward persistent multi-view underfit regions.
 - The unified pipeline jointly refines SfM poses and Gaussian appearance with photometric and reprojection losses.
 - Fisher Vector retrieval plus MST connectivity provides a fast unordered-image front end.
@@ -67,6 +68,10 @@ The exact per-scene measurements from the July 2026 13-scene verification run
 are archived in [`results/paper_reproduction_seed42.csv`](results/paper_reproduction_seed42.csv),
 with aggregate comparisons and protocol notes in
 [`results/README.md`](results/README.md).
+
+The complete LaTeX sources and all required figure assets are included in
+[`paper/`](paper/); both the main paper and supplementary material can be
+compiled independently from that directory.
 
 ## One-click paper reproduction
 
