@@ -285,13 +285,11 @@ Each figure shows the rendered output from SalientGS (Ours) alongside ablation v
 
 \paragraph{Outdoor Scenes.}
 Figures~\ref{fig:supp_bicycle}--\ref{fig:supp_treehill} cover the five outdoor scenes.
-SalientGS consistently resolves fine-grained texture---foliage, bark, grass---that Vanilla MCMC blurs and Standard ADC can render with color artifacts on most scenes.
-The advantage is most pronounced on \textit{stump} and \textit{flowers}, where high-frequency detail benefits most from importance-guided capacity allocation; on \textit{garden}, SalientGS and Standard ADC perform comparably.
+The crops show localized differences in foliage, bark, and grass, while Table~\ref{tab:supp_per_scene_lpips} provides the scene-level ranking. SalientGS is best on \textit{bicycle} and \textit{stump} and ties Vanilla MCMC on \textit{treehill} after rounding. On \textit{flowers}, it trails Vanilla MCMC (0.274 vs.\ 0.264) but remains better than Standard ADC and Freeze Poses; on \textit{garden}, Standard ADC is best (0.066 vs.\ 0.074 for SalientGS). Thus the qualitative crops illustrate local behavior rather than overriding the per-scene metrics.
 
 \paragraph{Indoor Scenes.}
 Figures~\ref{fig:supp_bonsai}--\ref{fig:supp_room} cover the four indoor scenes.
-On \textit{counter}, \textit{bonsai}, and \textit{kitchen}, SalientGS outperforms all ablation variants, though the margins are smaller than on outdoor scenes due to simpler geometry and more uniform textures.
-On \textit{room}, SalientGS underperforms VGGT-X on flat, textureless surfaces where first-order SfM initialization provides weaker geometric constraints than learned pose estimators (see main paper, Qualitative Results and Conclusion), though it still leads all ablation variants in the per-image LPIPS table.
+SalientGS leads all displayed ablation variants on \textit{bonsai}, \textit{kitchen}, and \textit{room}. On \textit{counter}, it records 0.136 LPIPS and therefore trails Vanilla MCMC (0.132) and Freeze Poses (0.134), while remaining better than Standard ADC (0.148). The selected \textit{room} failure view is a separate per-view diagnostic: SalientGS trails VGGT-X there (0.312 vs.\ 0.244), despite its 0.150 scene-mean LPIPS and its lead over the displayed ablation variants.
 
 \begin{figure*}[t]
     \centering
@@ -352,7 +350,7 @@ On \textit{room}, SalientGS underperforms VGGT-X on flat, textureless surfaces w
 \begin{figure*}[t]
     \centering
     \includegraphics[width=\textwidth]{qualitative/qual_scene_room.jpg}
-    \caption{Per-scene qualitative comparison: \textit{room}. SalientGS underperforms on this indoor scene with uniform textures, where first-order SfM provides weaker geometric constraints.}
+    \caption{Qualitative comparison on \textit{room}. The selected failure view exposes a texture-poor local region where SalientGS trails VGGT-X; this per-view observation is distinct from the 0.150 scene-mean LPIPS in Table~\ref{tab:supp_per_scene_lpips}.}
     \label{fig:supp_room}
 \end{figure*}
 
@@ -362,7 +360,7 @@ On \textit{room}, SalientGS underperforms VGGT-X on flat, textureless surfaces w
 \section{Per-Image LPIPS Analysis}
 \label{sec:supp_per_image_lpips}
 
-Table~\ref{tab:supp_per_scene_lpips} combines the released SalientGS verification with the controlled camera-ready ablation measurements. At full precision, SalientGS improves over vanilla MCMC on seven scenes and trails it on \textit{flowers} and \textit{counter}; \textit{garden} and \textit{treehill} appear tied after rounding. Its nine-scene mean is substantially lower (0.148 vs.\ 0.189). Because the columns come from two documented experiment snapshots, this table is descriptive; causal allocator conclusions are drawn from the matched controlled tables in \S\ref{sec:supp_camera_ready_ablations}.
+Table~\ref{tab:supp_per_scene_lpips} reports the corrected full-model evaluation together with the verified ablation measurements under the same metric protocol. The earlier discrepancy was an evaluation error in the full-model aggregate, not a change of experimental protocol. At full precision, SalientGS improves over vanilla MCMC on seven scenes and trails it on \textit{flowers} and \textit{counter}; \textit{garden} and \textit{treehill} appear tied after rounding. Its nine-scene mean is substantially lower (0.148 vs.\ 0.189). Scene-level exceptions are retained explicitly rather than hidden by the aggregate.
 
 \begin{table}[t]
     \centering
@@ -406,7 +404,7 @@ Table~\ref{tab:supp_per_scene_lpips} combines the released SalientGS verificatio
 
 Table~\ref{tab:supp_threshold} reports the Mip-NeRF 360 sensitivity sweep referenced in the main paper. We vary the importance threshold $\tau_{\text{imp}}$ and the number of views $K$ used for multi-view score computation while keeping the rest of the pipeline fixed.
 
-The released setting uses $\tau_{\text{imp}}{=}5$ and $K{=}10$. PSNR and SSIM vary mildly across nearby settings, while LPIPS is more sensitive to perceptual blur and high-frequency detail; we therefore report the three metrics separately rather than summarizing robustness with a single PSNR range.
+The released setting uses $\tau_{\text{imp}}{=}5$ and $K{=}10$. These defaults were fixed before the full benchmark and are not selected per scene from the sweep. PSNR and SSIM vary mildly across nearby settings, while LPIPS is more sensitive to perceptual blur and high-frequency detail; we therefore report the three metrics separately rather than summarizing robustness with a single PSNR range.
 
 \begin{table}[t]
     \centering
@@ -513,7 +511,7 @@ Max track length & PSNR\,$\uparrow$ & SSIM\,$\uparrow$ & LPIPS\,$\downarrow$ \\
 \section{Additional Camera-Ready Ablations}
 \label{sec:supp_camera_ready_ablations}
 
-This section records the ablations completed during the author response. All occurrences of the complete default model use the corrected released aggregate, 28.82~dB / 0.853 / 0.148; the remaining variant measurements are unchanged.
+This section records the ablations completed during the author response. A previous evaluation error affected only the reported full-model aggregate. All occurrences of the complete default model therefore use the corrected value, 28.82~dB / 0.853 / 0.148; the other variant measurements were verified under the same protocol and remain unchanged.
 
 \begin{table*}[t]
     \centering
@@ -538,7 +536,7 @@ Table~\ref{tab:supp_init_allocator} shows that guided allocation improves both i
 \begin{table}[t]
     \centering
     \footnotesize
-    \caption{Importance-score schedule and opacity mixing on Mip-NeRF 360.}
+    \caption{Importance-score schedule and opacity mixing on Mip-NeRF 360. Bold marks the best value within each sub-sweep; default/full identifies the fixed released configuration, not a post-hoc metric optimum.}
     \label{tab:supp_schedule}
     \begin{tabular}{lccc}
         \toprule
@@ -562,7 +560,7 @@ Table~\ref{tab:supp_init_allocator} shows that guided allocation improves both i
 \begin{table}[t]
     \centering
     \footnotesize
-    \caption{Robust quantile normalization and selection-quantile interaction on Mip-NeRF 360. The final row reports the fraction of Gaussians in the high-error mass at 30K iterations.}
+    \caption{Robust quantile normalization and selection-quantile interaction on Mip-NeRF 360. Bold marks the best value by metric; default/full identifies the fixed released configuration. The final row reports the fraction of Gaussians in the high-error mass at 30K iterations.}
     \label{tab:supp_quantiles}
     \begin{tabular}{lccc}
         \toprule
@@ -576,6 +574,8 @@ Table~\ref{tab:supp_init_allocator} shows that guided allocation improves both i
         \bottomrule
     \end{tabular}
 \end{table}
+
+The sensitivity tables expose the cost--quality trade-off rather than retroactively selecting the best row. For example, $T{=}200$ improves the three reported metrics but computes scores 2.5$\times$ as often as the released $T{=}500$ schedule; alternative selection quantiles and opacity mixing can also improve LPIPS. We retain the preselected defaults in the full benchmark to avoid per-scene or post-hoc configuration selection.
 
 \begin{table}[t]
     \centering

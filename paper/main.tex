@@ -370,7 +370,7 @@ where $\mathcal{L}_{\text{reg}}$ includes standard 3DGS regularizers (scale, opa
             & 61.12 & 23.05 & 0.818 & \cellcolor{tabsecond}0.138 & 3.00M \\
         SalientGS (Ours)
             & \cellcolor{tabfirst}\bf 11.79 & \cellcolor{tabsecond}28.82 & \cellcolor{tabsecond}0.853 & \cellcolor{tabsecond}0.148 & 1.50M
-            & \cellcolor{tabfirst}\bf 10.04 & 29.49 & 0.906 & \cellcolor{tabfirst}\bf 0.183 & 1.50M
+            & \cellcolor{tabfirst}\bf 10.04 & 29.49 & \cellcolor{tabthird}0.906 & \cellcolor{tabfirst}\bf 0.183 & 1.50M
             & \cellcolor{tabfirst}\bf 10.03 & \cellcolor{tabfirst}\bf 24.65 & \cellcolor{tabfirst}\bf 0.869 & \cellcolor{tabfirst}\bf 0.109 & 1.50M \\
         \bottomrule
     \end{tabular}
@@ -399,7 +399,7 @@ Including every front-end and training stage, SalientGS averages 11.79, 10.04, a
 \subsection{Ablation Study}
 \label{sec:ablation}
 
-We ablate each key component of SalientGS on the Mip-NeRF 360 benchmark to quantify individual contributions. All variants share the same first-order SfM initialization and Fisher Vector matching; only the 3DGS training stage differs unless otherwise noted. We use the corrected full-model aggregate, 28.82~dB / 0.853 / 0.148, consistently in the main comparison and ablations; all deltas below are recomputed against this value.
+We ablate each key component of SalientGS on the Mip-NeRF 360 benchmark to quantify individual contributions. All variants share the same first-order SfM initialization and Fisher Vector matching; only the 3DGS training stage differs unless otherwise noted. A previous evaluation error affected only the reported full-model aggregate; after correction, the full model is 28.82~dB / 0.853 / 0.148 under the same protocol as the verified variants. We use this corrected value consistently, and all deltas below are recomputed against it.
 
 %% ---------------------------------------------------------------------------
 %% Table 2: Component Ablation
@@ -504,7 +504,7 @@ Increasing retrieval from $k{=}20$ to 40 gives a small 0.04~dB gain, whereas red
 Guidance improves every tested budget, with the gain generally decreasing from +0.27~dB at 500K to +0.09~dB at 3M. Guided 1M (28.81~dB) already exceeds vanilla 1.5M (28.72~dB), showing the largest value under tight capacity.
 
 \paragraph{Schedule and normalization sensitivity}
-The supplementary material reports every schedule and normalization setting. Nearby alternatives can shift individual metrics slightly, while the released model uses one fixed default across all scenes.
+The supplementary material reports every schedule and normalization setting. The released defaults were fixed before the full benchmark rather than selected per scene for the best metric: $T{=}500$ reduces score-recomputation frequency relative to $T{=}200$, $k{=}20$ limits retrieval and matching cost relative to $k{=}40$, and one quantile setting is retained across all scenes. Some more expensive or sweep-selected alternatives achieve better individual metrics, which we report without substituting them into the released result.
 
 %% ---------------------------------------------------------------------------
 %% SfM Runtime Comparison
@@ -536,15 +536,15 @@ We present qualitative comparisons on representative Mip-NeRF 360 scenes in Figu
     \includegraphics[width=0.49\textwidth]{qualitative/qual_success_stump_v015.jpg}\\[2pt]
     \includegraphics[width=0.49\textwidth]{qualitative/qual_success_counter_v009.jpg}\hfill
     \includegraphics[width=0.49\textwidth]{qualitative/qual_failure_room_v020.jpg}
-    \caption{\textbf{Qualitative comparison on Mip-NeRF 360.} The first three panels show success cases where SalientGS achieves large LPIPS improvements over baselines. The final panel shows the \textit{room} failure case, where SalientGS (LPIPS\,=\,0.312) underperforms VGGT-X (LPIPS\,=\,0.244) on an indoor scene with uniform textures.}
+    \caption{\textbf{Selected-view qualitative comparison on Mip-NeRF 360.} The first three panels illustrate localized detail differences on \textit{garden}, \textit{stump}, and \textit{counter}; they are not used to claim per-scene ranking. The final panel is a selected \textit{room} failure view, where SalientGS has per-view LPIPS 0.312 versus 0.244 for VGGT-X. Scene-mean LPIPS is reported separately in the supplementary material.}
     \label{fig:qual_main}
 \end{figure*}
 
-\paragraph{Success Cases}
-SalientGS shows the strongest advantages on outdoor scenes with complex, high-frequency textures. On \textit{garden} and \textit{stump}, importance-guided MCMC allocates Gaussians to resolve fine foliage and bark textures that Vanilla MCMC renders as blurred masses. On \textit{counter}, SalientGS recovers sharper edges on kitchen objects that other methods over-smooth. VGGT-X consistently exhibits ghosting and geometric distortions in outdoor scenes due to feed-forward pose estimation errors.
+\paragraph{Selected-View Observations}
+The crops illustrate where importance-guided allocation can recover localized high-frequency structure. The most consistent quantitative gain among these examples is on \textit{stump}. On the selected \textit{garden} and \textit{counter} views, SalientGS preserves visually sharp local detail, but its scene-mean LPIPS does not lead every ablation: Standard ADC is better on \textit{garden}, while Vanilla MCMC and Freeze Poses are slightly better on \textit{counter}. We therefore use these panels as qualitative diagnostics rather than as evidence of scene-level ranking.
 
 \paragraph{Failure Cases}
-On indoor scenes with uniform textures (\textit{room}, \textit{kitchen}), VGGT-X's dense feed-forward initialization provides stronger geometric constraints than our first-order SfM, reducing the benefit of importance-guided allocation. Detailed per-scene LPIPS comparisons are provided in the Supplementary ``Per-Image LPIPS Analysis'' section.
+On the selected texture-poor \textit{room} view, VGGT-X's dense feed-forward initialization provides a stronger local reconstruction than our first-order SfM (per-view LPIPS 0.244 vs.\ 0.312). This is a localized failure rather than the scene-average ranking: SalientGS records 0.150 scene-mean LPIPS on \textit{room}. Detailed per-scene and per-view distinctions are provided in the Supplementary ``Per-Image LPIPS Analysis'' and failure-diagnostics sections.
 
 
 % ---------------------------------------------------------------------------
@@ -604,13 +604,13 @@ Joint optimization consistently improves all pose metrics regardless of SfM init
 We presented SalientGS, a unified SfM-to-3DGS pipeline for fast reconstruction with robust quality under a fixed Gaussian budget. In the released-code 13-scene verification, SalientGS achieves the best three-benchmark macro-average PSNR, SSIM, LPIPS, and end-to-end runtime among all methods in the main comparison. This overall result is driven by consistency: SalientGS remains strong across all three datasets, whereas competing pose-optimizing pipelines suffer severe failures on Deep Blending. The result supports the practical value of combining retrieval-based matching, first-order SfM, joint pose refinement, and importance-guided allocation. At the same time, individual dataset metrics show room for improvement, particularly Deep Blending PSNR/SSIM and fine-detail LPIPS on several Mip-NeRF 360 scenes.
 
 \paragraph{Design Choice: Minimal Per-Scene Tuning}
-SalientGS uses a single fixed set of hyperparameters across all scenes, unlike methods that use per-scene schedules~\cite{mcmc3dgs,ren2025fastgs}. This simplifies deployment and makes the released runner deterministic under a fixed seed, but it can leave scene-specific quality on the table (see the Supplementary ``Threshold Sensitivity Sweep'' section).
+SalientGS uses a single fixed set of hyperparameters across all scenes, unlike methods that use per-scene schedules~\cite{mcmc3dgs,ren2025fastgs}. The defaults are an efficiency and reproducibility choice, not the metric-wise optimum of the post-hoc sweep: more frequent score updates, broader retrieval, or alternative quantiles can improve individual metrics. Retaining one preselected configuration simplifies deployment and makes the released runner deterministic under a fixed seed, but it leaves some quality on the table (see the Supplementary sensitivity tables).
 
 \paragraph{Limitation: Pose Optimization vs.\ Speed}
 A fundamental tension exists between camera pose optimization and training efficiency. The verified end-to-end runtime is competitive, but joint optimization still adds training-stage overhead relative to a frozen-pose run on identical hardware. Reducing that overhead without weakening geometric correction remains open.
 
 \paragraph{Limitation: Upstream Component Dependencies}
-Joint optimization is effective only when upstream SfM succeeds: of 45 ETH3D SLAM sequences, 2 fail SfM entirely and 4 fail joint training, though the remaining 39 show consistent improvement (AUC@0.1m gains in 67\% of scenes). Additionally, Fisher Vector retrieval may fail under severe appearance variation where learned descriptors would provide more robust pair selection, and first-order SfM is sensitive to sparse coverage and degenerate camera motions such as collinear configurations. These limitations highlight that our joint optimization refines rather than substitutes for successful SfM initialization.
+Joint optimization is effective only when upstream SfM succeeds: of 45 ETH3D SLAM sequences, 2 fail SfM entirely and 4 fail joint training. Across the 39 training-success sequences, aggregate pose metrics improve, while per-scene AUC@0.1m improves in 67\% of cases. Additionally, Fisher Vector retrieval may fail under severe appearance variation where learned descriptors would provide more robust pair selection, and first-order SfM is sensitive to sparse coverage and degenerate camera motions such as collinear configurations. These limitations highlight that our joint optimization refines rather than substitutes for successful SfM initialization.
 
 %% =============================================================================
 %% BIBLIOGRAPHY
