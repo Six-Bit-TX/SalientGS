@@ -2,7 +2,7 @@
 %%% Do NOT edit. File created by BibTeX with style
 %%% ACM-Reference-Format-Journals [18-Jan-2012].
 
-\begin{thebibliography}{42}
+\begin{thebibliography}{48}
 
 %%% ====================================================================
 %%% NOTE TO THE USER: you can override these defaults by providing
@@ -87,6 +87,21 @@
   Conference on Computer Vision and Pattern Recognition}}.
   \bibinfo{publisher}{IEEE}, \bibinfo{address}{Piscataway, NJ, USA},
   \bibinfo{pages}{5470--5479}.
+\newblock
+
+
+\bibitem[Chen et~al\mbox{.}(2026)]%
+        {chen2026topology}
+\bibfield{author}{\bibinfo{person}{Haozhe Chen}, \bibinfo{person}{Rui Li},
+  \bibinfo{person}{Zhengbao Wang}, \bibinfo{person}{Xinhao Zhu},
+  \bibinfo{person}{Linjie Li}, \bibinfo{person}{Tianyu Xiong},
+  \bibinfo{person}{Xuan Ouyang}, {and} \bibinfo{person}{Jiaqi Yang}.}
+  \bibinfo{year}{2026}\natexlab{}.
+\newblock \showarticletitle{Topology-Aware Feature Propagation for Unsupervised
+  Non-Rigid Point Cloud Correspondence}. In
+  \bibinfo{booktitle}{\emph{Proceedings of the IEEE/CVF Conference on Computer
+  Vision and Pattern Recognition}}. \bibinfo{publisher}{IEEE},
+  \bibinfo{address}{Piscataway, NJ, USA}, \bibinfo{pages}{31389--31399}.
 \newblock
 
 
@@ -292,6 +307,47 @@
   First-Order Optimization}. In \bibinfo{booktitle}{\emph{Proceedings of the
   International Conference on 3D Vision}}. \bibinfo{publisher}{IEEE},
   \bibinfo{address}{Piscataway, NJ, USA}.
+\newblock
+
+
+\bibitem[Li et~al\mbox{.}(2024)]%
+        {li2024know}
+\bibfield{author}{\bibinfo{person}{Rui Li}, \bibinfo{person}{Tobias Fischer},
+  \bibinfo{person}{Mattia Segu}, \bibinfo{person}{Marc Pollefeys},
+  \bibinfo{person}{Luc Van~Gool}, {and} \bibinfo{person}{Federico Tombari}.}
+  \bibinfo{year}{2024}\natexlab{}.
+\newblock \showarticletitle{Know Your Neighbors: Improving Single-View
+  Reconstruction via Spatial Vision-Language Reasoning}. In
+  \bibinfo{booktitle}{\emph{Proceedings of the IEEE/CVF Conference on Computer
+  Vision and Pattern Recognition}}. \bibinfo{publisher}{IEEE},
+  \bibinfo{address}{Piscataway, NJ, USA}, \bibinfo{pages}{9848--9858}.
+\newblock
+
+
+\bibitem[Li et~al\mbox{.}(2023)]%
+        {li2023learning}
+\bibfield{author}{\bibinfo{person}{Rui Li}, \bibinfo{person}{Dong Gong},
+  \bibinfo{person}{Wei Yin}, \bibinfo{person}{Hao Chen}, \bibinfo{person}{Yu
+  Zhu}, \bibinfo{person}{Kaixuan Wang}, \bibinfo{person}{Xiaozhi Chen},
+  \bibinfo{person}{Jinqiu Sun}, {and} \bibinfo{person}{Yanning Zhang}.}
+  \bibinfo{year}{2023}\natexlab{}.
+\newblock \showarticletitle{Learning to Fuse Monocular and Multi-View Cues for
+  Multi-Frame Depth Estimation in Dynamic Scenes}. In
+  \bibinfo{booktitle}{\emph{Proceedings of the IEEE/CVF Conference on Computer
+  Vision and Pattern Recognition}}. \bibinfo{publisher}{IEEE},
+  \bibinfo{address}{Piscataway, NJ, USA}, \bibinfo{pages}{21539--21548}.
+\newblock
+
+
+\bibitem[Li et~al\mbox{.}(2025)]%
+        {li2025lari}
+\bibfield{author}{\bibinfo{person}{Rui Li}, \bibinfo{person}{Biao Zhang},
+  \bibinfo{person}{Zhenyu Li}, \bibinfo{person}{Federico Tombari}, {and}
+  \bibinfo{person}{Peter Wonka}.} \bibinfo{year}{2025}\natexlab{}.
+\newblock \showarticletitle{{LaRI}: Layered Ray Intersections for Single-View
+  {3D} Geometric Reasoning}.
+\newblock \bibinfo{journal}{\emph{arXiv preprint arXiv:2504.18424}}
+  (\bibinfo{year}{2025}).
 \newblock
 
 
@@ -534,6 +590,34 @@
   Conference on Computer Vision and Pattern Recognition}}.
   \bibinfo{publisher}{IEEE}, \bibinfo{address}{Piscataway, NJ, USA},
   \bibinfo{pages}{11997--12006}.
+\newblock
+
+
+\bibitem[Wu et~al\mbox{.}(2024)]%
+        {wu2024gomvs}
+\bibfield{author}{\bibinfo{person}{Jiang Wu}, \bibinfo{person}{Rui Li},
+  \bibinfo{person}{Haofei Xu}, \bibinfo{person}{Wenxun Zhao},
+  \bibinfo{person}{Yu Zhu}, \bibinfo{person}{Jinqiu Sun}, {and}
+  \bibinfo{person}{Yanning Zhang}.} \bibinfo{year}{2024}\natexlab{}.
+\newblock \showarticletitle{{GoMVS}: Geometrically Consistent Cost Aggregation
+  for Multi-View Stereo}. In \bibinfo{booktitle}{\emph{Proceedings of the
+  IEEE/CVF Conference on Computer Vision and Pattern Recognition}}.
+  \bibinfo{publisher}{IEEE}, \bibinfo{address}{Piscataway, NJ, USA},
+  \bibinfo{pages}{20207--20216}.
+\newblock
+
+
+\bibitem[Wu et~al\mbox{.}(2025)]%
+        {wu2025sparse2dgs}
+\bibfield{author}{\bibinfo{person}{Jiang Wu}, \bibinfo{person}{Rui Li},
+  \bibinfo{person}{Yu Zhu}, \bibinfo{person}{Rong Guo}, \bibinfo{person}{Jinqiu
+  Sun}, {and} \bibinfo{person}{Yanning Zhang}.}
+  \bibinfo{year}{2025}\natexlab{}.
+\newblock \showarticletitle{{Sparse2DGS}: Geometry-Prioritized Gaussian
+  Splatting for Surface Reconstruction from Sparse Views}. In
+  \bibinfo{booktitle}{\emph{Proceedings of the IEEE/CVF Conference on Computer
+  Vision and Pattern Recognition}}. \bibinfo{publisher}{IEEE},
+  \bibinfo{address}{Piscataway, NJ, USA}, \bibinfo{pages}{11307--11316}.
 \newblock
 
 
