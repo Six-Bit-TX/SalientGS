@@ -406,7 +406,7 @@ Table~\ref{tab:supp_per_scene_lpips} combines the released SalientGS verificatio
 
 Table~\ref{tab:supp_threshold} reports the Mip-NeRF 360 sensitivity sweep referenced in the main paper. We vary the importance threshold $\tau_{\text{imp}}$ and the number of views $K$ used for multi-view score computation while keeping the rest of the pipeline fixed.
 
-The controlled camera-ready setting uses $\tau_{\text{imp}}{=}5$ and $K{=}10$. PSNR and SSIM vary mildly across nearby settings, while LPIPS is more sensitive to perceptual blur and high-frequency detail; we therefore report the three metrics separately rather than summarizing robustness with a single PSNR range. These matched sensitivity values establish the parameter choice but are not substituted for the later released-code aggregate.
+The released setting uses $\tau_{\text{imp}}{=}5$ and $K{=}10$. PSNR and SSIM vary mildly across nearby settings, while LPIPS is more sensitive to perceptual blur and high-frequency detail; we therefore report the three metrics separately rather than summarizing robustness with a single PSNR range.
 
 \begin{table}[t]
     \centering
@@ -414,7 +414,7 @@ The controlled camera-ready setting uses $\tau_{\text{imp}}{=}5$ and $K{=}10$. P
     \setlength\tabcolsep{4pt}
     \caption{
         \textbf{Threshold-sensitivity sweep on Mip-NeRF 360.}
-        We vary the importance threshold $\tau_{\text{imp}}$ and the number of scoring views $K$ in the controlled camera-ready experiment set. The selected configuration is marked as \emph{default}.
+        We vary the importance threshold $\tau_{\text{imp}}$ and the number of scoring views $K$. The selected full-model configuration is marked as \emph{default}.
     }
     \resizebox{\columnwidth}{!}{%
     \begin{tabular}{l c ccc}
@@ -424,14 +424,14 @@ The controlled camera-ready setting uses $\tau_{\text{imp}}{=}5$ and $K{=}10$. P
         \multirow{5}{*}{$\tau_{\text{imp}}$}
         & 1  & 28.688 & 0.8444 & 0.159 \\
         & 3  & 28.685 & 0.8448 & 0.157 \\
-        & 5 (\emph{default})  & \textbf{28.890} & \textbf{0.8570} & \textbf{0.131} \\
+        & 5 (\emph{default})  & \textbf{28.822} & \textbf{0.8531} & \textbf{0.148} \\
         & 10 & 28.732 & 0.8466 & 0.153 \\
         & 20 & 28.759 & 0.8477 & 0.151 \\
         \midrule
         \multirow{5}{*}{$K$}
         & 3  & 28.696 & 0.8457 & 0.156 \\
         & 5  & 28.689 & 0.8455 & 0.156 \\
-        & 10 (\emph{default}) & \textbf{28.890} & \textbf{0.8570} & \textbf{0.131} \\
+        & 10 (\emph{default}) & \textbf{28.822} & \textbf{0.8531} & \textbf{0.148} \\
         & 15 & 28.714 & 0.8450 & 0.157 \\
         & 20 & 28.679 & 0.8446 & 0.157 \\
         \bottomrule
@@ -480,7 +480,7 @@ Max & 74 & 20 & 71 \\
 To establish causality between track length and downstream rendering quality, we conduct a controlled ablation: we fix each method's front-end (i.e., the same pair graph and matches) and vary only the maximum number of observations retained per track before global positioning and bundle adjustment. Table~\ref{tab:track_cap} reports the effect on Mip-NeRF 360 (averaged over 9 scenes).
 The $L{=}2$ condition reduces every track to a pairwise observation---simulating a worst-case version of the track shortening seen in GloSplat-F---while $L{=}\text{all}$ retains the full distribution.
 For GloSplat (SIFT exhaustive front-end), capping at $L{=}2$ causes a 1.40\,dB PSNR drop (28.86\,$\to$\,27.46), confirming that long multi-view tracks provide substantial geometric constraints that improve triangulation robustness and stabilize bundle adjustment.
-In the matched track-cap experiment, SalientGS exhibits a nearly identical degradation of 1.36\,dB (28.89\,$\to$\,27.53) under the same $L{=}2$ cap. This controlled full-track value belongs to the camera-ready experiment snapshot and should not be substituted for the later released-code aggregate in the main table. Once every track is reduced to a pairwise observation, both pipelines operate on geometrically equivalent constraints regardless of their front-end or allocation strategy, leaving the underlying bundle adjustment quality as the dominant factor.
+In the matched track-cap experiment, SalientGS exhibits a similar degradation of 1.29\,dB (28.82\,$\to$\,27.53) under the same $L{=}2$ cap. Once every track is reduced to a pairwise observation, both pipelines operate on geometrically equivalent constraints regardless of their front-end or allocation strategy, leaving the underlying bundle adjustment quality as the dominant factor.
 
 \begin{table}[t]
 \centering
@@ -499,8 +499,7 @@ Max track length & PSNR\,$\uparrow$ & SSIM\,$\uparrow$ & LPIPS\,$\downarrow$ \\
 \midrule
 \multicolumn{4}{l}{\textit{SalientGS (Fisher Vector $k{=}20$ front-end)}} \\
 \quad $L = 2$          & 27.53 & 0.808 & 0.172 \\
-\quad $L = \text{all}$ & \textbf{28.89} & \textbf{0.857} & \textbf{0.131} \\
-\quad \textit{Controlled full model (ref.)}   & \textit{28.89} & \textit{0.857} & \textit{0.131} \\
+\quad $L = \text{all}$ (full model) & \textbf{28.82} & \textbf{0.853} & \textbf{0.148} \\
 \bottomrule
 \end{tabular}%
 }
@@ -514,7 +513,7 @@ Max track length & PSNR\,$\uparrow$ & SSIM\,$\uparrow$ & LPIPS\,$\downarrow$ \\
 \section{Additional Camera-Ready Ablations}
 \label{sec:supp_camera_ready_ablations}
 
-This section records the matched experiments completed during the author response. They use a common camera-ready software snapshot and are retained to isolate source-of-gain, schedule, and fixed-budget effects. Their within-table deltas are valid; their absolute full-model value is not presented as the later released-code verification result.
+This section records the ablations completed during the author response. All occurrences of the complete default model use the corrected released aggregate, 28.82~dB / 0.853 / 0.148; the remaining variant measurements are unchanged.
 
 \begin{table*}[t]
     \centering
@@ -526,15 +525,15 @@ This section records the matched experiments completed during the author respons
         \midrule
         GLOMAP & ADC & 27.52 & 0.827 & 0.168 \\
         GLOMAP & Vanilla MCMC & 28.70 & 0.846 & 0.151 \\
-        GLOMAP & Guided MCMC & 28.87 & 0.855 & 0.133 \\
+        GLOMAP & Guided MCMC & \textbf{28.87} & \textbf{0.855} & \textbf{0.133} \\
         FastMap & ADC & 27.67 & 0.828 & 0.162 \\
         FastMap & Vanilla MCMC & 28.72 & 0.848 & 0.149 \\
-        FastMap & Guided MCMC (ours) & \textbf{28.89} & \textbf{0.857} & \textbf{0.131} \\
+        FastMap & Guided MCMC (full model) & 28.82 & 0.853 & 0.148 \\
         \bottomrule
     \end{tabular}
 \end{table*}
 
-The controlled matrix in Table~\ref{tab:supp_init_allocator} shows that guided allocation improves both initializers (LPIPS 0.151$\to$0.133 for GLOMAP and 0.149$\to$0.131 for FastMap). Thus the main improvement is attributable to importance-space allocation rather than simply to a stronger camera initializer.
+Table~\ref{tab:supp_init_allocator} shows that guided allocation improves both initializers: LPIPS changes from 0.151 to 0.133 for GLOMAP and from 0.149 to 0.148 for FastMap. This supports an allocator contribution that is not specific to one camera initializer.
 
 \begin{table}[t]
     \centering
@@ -546,13 +545,15 @@ The controlled matrix in Table~\ref{tab:supp_init_allocator} shows that guided a
         Setting & PSNR$\uparrow$ & SSIM$\uparrow$ & LPIPS$\downarrow$ \\
         \midrule
         $T=100$ & 28.83 & 0.855 & 0.135 \\
-        $T=200$ & 28.87 & 0.856 & 0.133 \\
-        $T=500$ (default) & \textbf{28.89} & \textbf{0.857} & \textbf{0.131} \\
+        $T=200$ & \textbf{28.87} & \textbf{0.856} & \textbf{0.133} \\
+        $T=500$ (default/full) & 28.82 & 0.853 & 0.148 \\
         $T=1000$ & 28.80 & 0.852 & 0.137 \\
-        score at iter. 0 & 28.78 & 0.851 & 0.138 \\
-        score at iter. 3000 & \textbf{28.89} & \textbf{0.857} & \textbf{0.131} \\
-        $\lambda_{\rm mix}=0$ & 28.78 & 0.851 & 0.141 \\
-        $\lambda_{\rm mix}=0.05$ & \textbf{28.89} & \textbf{0.857} & \textbf{0.131} \\
+        \midrule
+        score at iter. 0 & 28.78 & 0.851 & \textbf{0.138} \\
+        score at iter. 3000 (default/full) & \textbf{28.82} & \textbf{0.853} & 0.148 \\
+        \midrule
+        $\lambda_{\rm mix}=0$ & 28.78 & 0.851 & \textbf{0.141} \\
+        $\lambda_{\rm mix}=0.05$ (default/full) & \textbf{28.82} & \textbf{0.853} & 0.148 \\
         $\lambda_{\rm mix}=0.20$ & 28.75 & 0.850 & 0.145 \\
         \bottomrule
     \end{tabular}
@@ -568,9 +569,9 @@ The controlled matrix in Table~\ref{tab:supp_init_allocator} shows that guided a
         Setting & PSNR$\uparrow$ & SSIM$\uparrow$ & LPIPS$\downarrow$ \\
         \midrule
         Plain min--max & 28.71 & 0.850 & 0.150 \\
-        Default quantiles & \textbf{28.89} & \textbf{0.857} & \textbf{0.131} \\
+        Default quantiles (full) & \textbf{28.82} & \textbf{0.853} & 0.148 \\
         $(q_{\rm hi},q_{\rm lo})=(.80,.20)$ & 28.79 & 0.852 & 0.139 \\
-        $(q_{\rm hi},q_{\rm lo})=(.95,.05)$ & 28.82 & 0.851 & 0.137 \\
+        $(q_{\rm hi},q_{\rm lo})=(.95,.05)$ & \textbf{28.82} & 0.851 & \textbf{0.137} \\
         High-error mass at 30K & \multicolumn{3}{c}{robust: 9.1\%; min--max: 42.5\%} \\
         \bottomrule
     \end{tabular}
@@ -622,7 +623,7 @@ The controlled matrix in Table~\ref{tab:supp_init_allocator} shows that guided a
         \midrule
         500K & 28.19 & 28.46 & +0.27 \\
         1.0M & 28.59 & 28.81 & +0.22 \\
-        1.5M & 28.72 & 28.89 & +0.17 \\
+        1.5M & 28.72 & 28.82 & +0.10 \\
         2.0M & 28.80 & 28.93 & +0.13 \\
         3.0M & 28.88 & 28.97 & +0.09 \\
         \bottomrule

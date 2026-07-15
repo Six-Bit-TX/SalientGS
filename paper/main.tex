@@ -139,7 +139,7 @@ Our contributions:
 \setlength{\parsep}{0pt}
 \setlength{\partopsep}{0pt}
 \begin{itemize}
-    \item \textbf{Importance-guided MCMC Gaussian allocation:}\newline A heuristic allocation layer atop 3DGS-MCMC~\cite{mcmc3dgs} that biases both birth and relocation toward underfit regions via multi-view error attribution, yielding +0.17~dB improvement in peak signal-to-noise ratio (PSNR) and a 12\% LPIPS improvement over vanilla MCMC at 1.5M Gaussians (Table~\ref{tab:ablation}).
+    \item \textbf{Importance-guided MCMC Gaussian allocation:}\newline A heuristic allocation layer atop 3DGS-MCMC~\cite{mcmc3dgs} that biases both birth and relocation toward underfit regions via multi-view error attribution, yielding +0.10~dB PSNR and a 0.001 LPIPS reduction over vanilla MCMC at 1.5M Gaussians (Table~\ref{tab:ablation}).
     \item \textbf{Unified SfM-to-3DGS pipeline:} An end-to-end architecture coupling fast SfM initialization with joint refinement of pose and appearance under photometric and reprojection losses.
     \item \textbf{Efficient matching and first-order SfM:} Fisher Vector (FV) retrieval with Maximum Spanning Tree (MST) connectivity and first-order epipolar adjustment, achieving near-linear scaling and up to 23$\times$ SfM speedup.
     \item \textbf{Released-code verification:} A reproducible 13-scene evaluation with exact 30K-step schedules and per-scene records; SalientGS gives the best three-benchmark macro-average PSNR/SSIM/LPIPS and runtime among all methods in Table~\ref{tab:main-result}.
@@ -399,7 +399,7 @@ Including every front-end and training stage, SalientGS averages 11.79, 10.04, a
 \subsection{Ablation Study}
 \label{sec:ablation}
 
-We ablate each key component of SalientGS on the Mip-NeRF 360 benchmark to quantify individual contributions. All variants share the same first-order SfM initialization and Fisher Vector matching; only the 3DGS training stage differs unless otherwise noted. These controlled ablations were run as a matched experiment set under the camera-ready software snapshot; their within-table deltas isolate component effects. Table~\ref{tab:main-result}, by contrast, is the later released-code verification. Absolute values across the two experiment sets should therefore not be subtracted from one another.
+We ablate each key component of SalientGS on the Mip-NeRF 360 benchmark to quantify individual contributions. All variants share the same first-order SfM initialization and Fisher Vector matching; only the 3DGS training stage differs unless otherwise noted. We use the corrected full-model aggregate, 28.82~dB / 0.853 / 0.148, consistently in the main comparison and ablations; all deltas below are recomputed against this value.
 
 %% ---------------------------------------------------------------------------
 %% Table 2: Component Ablation
@@ -410,31 +410,31 @@ We ablate each key component of SalientGS on the Mip-NeRF 360 benchmark to quant
     \setlength\tabcolsep{1.5pt}
     \renewcommand{\arraystretch}{0.95}
     \caption{
-        \textbf{Controlled component ablation on Mip-NeRF 360.} $\Delta$PSNR is relative to the matched full configuration.
+        \textbf{Component ablation on Mip-NeRF 360.} $\Delta$PSNR is relative to the full configuration.
     }
     \begin{tabular}{l ccc r}
         \toprule
         Configuration & PSNR$\uparrow$ & SSIM$\uparrow$ & LPIPS$\downarrow$ & $\Delta$PSNR \\
         \midrule
         \multicolumn{5}{l}{\textit{(A) Importance-Guided MCMC}} \\
-        \quad Controlled full & \textbf{28.89} & \textbf{0.857} & \textbf{0.131} & --- \\
-        \quad w/o Guided Birth & 28.72 & 0.847 & 0.153 & $-$0.17 \\
-        \quad w/o Guided Reloc. & 28.77 & 0.849 & 0.149 & $-$0.12 \\
-        \quad w/o Both (Vanilla MCMC) & 28.72 & 0.848 & 0.149 & $-$0.17 \\
-        \quad w/o Footprint Normalization & 22.70 & 0.684 & 0.422 & $-$6.19 \\
+        \quad Full model & \textbf{28.82} & \textbf{0.853} & \textbf{0.148} & --- \\
+        \quad w/o Guided Birth & 28.72 & 0.847 & 0.153 & $-$0.10 \\
+        \quad w/o Guided Reloc. & 28.77 & 0.849 & 0.149 & $-$0.05 \\
+        \quad w/o Both (Vanilla MCMC) & 28.72 & 0.848 & 0.149 & $-$0.10 \\
+        \quad w/o Footprint Normalization & 22.70 & 0.684 & 0.422 & $-$6.12 \\
         \midrule
         \multicolumn{5}{l}{\textit{(B) Densification Strategy}} \\
-        \quad Standard ADC (clone/split) & 27.67 & 0.828 & 0.162 & $-$1.22 \\
+        \quad Standard ADC (clone/split) & 27.67 & 0.828 & 0.162 & $-$1.15 \\
         \bottomrule
     \end{tabular}
     \label{tab:ablation}
 \end{table}
 
 \paragraph{Importance-Guided MCMC (Group A)}
-Against matched vanilla MCMC, guidance adds 0.17~dB and lowers LPIPS by 12\% (0.149$\to$0.131). Birth guidance provides the larger contribution; relocation is most useful when birth is also guided. Removing footprint normalization costs 6.19~dB because large projected primitives otherwise dominate the scores.
+Against vanilla MCMC, guidance adds 0.10~dB and lowers LPIPS from 0.149 to 0.148. Birth guidance provides the larger PSNR contribution; relocation is most useful when birth is also guided. Removing footprint normalization costs 6.12~dB because large projected primitives otherwise dominate the scores.
 
 \paragraph{Densification Strategy (Group B)}
-Replacing guided MCMC management with standard ADC costs 1.22~dB, supporting multi-view redistribution under a fixed budget.
+Replacing guided MCMC management with standard ADC costs 1.15~dB, supporting multi-view redistribution under a fixed budget.
 
 %% ---------------------------------------------------------------------------
 %% Table 3: SfM and Pose Optimization Ablation
@@ -447,22 +447,22 @@ Table~\ref{tab:ablation_sfm} presents ablations on joint optimization and SfM in
     \scriptsize
     \setlength\tabcolsep{1.5pt}
     \caption{
-        \textbf{Controlled pose/SfM ablation} on Mip-NeRF 360. $\Delta$PSNR is relative to the matched full configuration.
+        \textbf{Pose/SfM ablation} on Mip-NeRF 360. $\Delta$PSNR is relative to the full configuration.
     }
     \begin{tabular}{l ccc r}
         \toprule
         Configuration & PSNR$\uparrow$ & SSIM$\uparrow$ & LPIPS$\downarrow$ & $\Delta$PSNR \\
         \midrule
         \multicolumn{5}{l}{\textit{(A) Joint Pose Optimization}} \\
-        \quad Controlled full & \textbf{28.89} & \textbf{0.857} & \textbf{0.131} & --- \\
-        \quad w/o BA Loss (photometric-only) & 28.70 & 0.845 & 0.156 & $-$0.19 \\
-        \quad Freeze Poses after SfM Init & 28.32 & 0.836 & 0.160 & $-$0.57 \\
+        \quad Full model & \textbf{28.82} & \textbf{0.853} & \textbf{0.148} & --- \\
+        \quad w/o BA Loss (photometric-only) & 28.70 & 0.845 & 0.156 & $-$0.12 \\
+        \quad Freeze Poses after SfM Init & 28.32 & 0.836 & 0.160 & $-$0.50 \\
         \midrule
         \multicolumn{5}{l}{\textit{(B) Sensitivity to SfM Initialization Quality}} \\
-        \quad Higher $k{=}40$ retrieval & 28.86 & \textbf{0.860} & 0.134 & $-$0.03 \\
-        \quad Controlled full ($k{=}20$ retrieval) & \textbf{28.89} & 0.857 & \textbf{0.131} & --- \\
-        \quad Lower $k{=}10$ retrieval & 27.35 & 0.833 & 0.169 & $-$1.54 \\
-        \quad Lower $k{=}5$ retrieval$^\dagger$ & 26.57 & 0.774 & 0.257 & $-$2.32 \\
+        \quad Higher $k{=}40$ retrieval & \textbf{28.86} & \textbf{0.860} & \textbf{0.134} & $+$0.04 \\
+        \quad Full model ($k{=}20$ retrieval) & 28.82 & 0.853 & 0.148 & --- \\
+        \quad Lower $k{=}10$ retrieval & 27.35 & 0.833 & 0.169 & $-$1.47 \\
+        \quad Lower $k{=}5$ retrieval$^\dagger$ & 26.57 & 0.774 & 0.257 & $-$2.25 \\
         \bottomrule
     \end{tabular}
     \\[2pt]
@@ -471,10 +471,10 @@ Table~\ref{tab:ablation_sfm} presents ablations on joint optimization and SfM in
 \end{table}
 
 \paragraph{Joint Pose Optimization (Group A)}
-Removing BA costs 0.19~dB, whereas freezing poses costs 0.57~dB. Thus photometric refinement provides most of the recovery and reprojection anchoring adds a further measurable gain.
+Removing BA costs 0.12~dB, whereas freezing poses costs 0.50~dB. Thus photometric refinement provides most of the recovery and reprojection anchoring adds a further measurable gain.
 
 \paragraph{SfM Initialization Quality (Group B)}
-Reducing retrieval from $k{=}20$ to 10 and 5 costs 1.54 and 2.32~dB, respectively; at $k{=}5$, \textit{stump} fails at 14.97~dB. Joint optimization therefore cannot replace a connected, reliable view graph.
+Increasing retrieval from $k{=}20$ to 40 gives a small 0.04~dB gain, whereas reducing it to 10 and 5 costs 1.47 and 2.25~dB, respectively; at $k{=}5$, \textit{stump} fails at 14.97~dB. Joint optimization therefore cannot replace a connected, reliable view graph.
 
 %% ---------------------------------------------------------------------------
 %% Table 4: Gaussian Budget Efficiency
@@ -492,7 +492,7 @@ Reducing retrieval from $k{=}20$ to 10 and 5 costs 1.54 and 2.32~dB, respectivel
         \midrule
         500K  & 28.19 & 28.46 & +0.27 \\
         1.0M  & 28.59 & 28.81 & +0.22 \\
-        1.5M  & 28.72 & \textbf{28.89} & +0.17 \\
+        1.5M  & 28.72 & 28.82 & +0.10 \\
         2.0M  & 28.80 & 28.93 & +0.13 \\
         3.0M  & 28.88 & \textbf{28.97} & +0.09 \\
         \bottomrule
@@ -501,10 +501,10 @@ Reducing retrieval from $k{=}20$ to 10 and 5 costs 1.54 and 2.32~dB, respectivel
 \end{table}
 
 \paragraph{Gaussian Budget Efficiency}
-Guidance improves every tested budget, with the gain shrinking from +0.27~dB at 500K to +0.09~dB at 3M. Guided 1M (28.81~dB) already exceeds vanilla 1.5M (28.72~dB), showing the largest value under tight capacity.
+Guidance improves every tested budget, with the gain generally decreasing from +0.27~dB at 500K to +0.09~dB at 3M. Guided 1M (28.81~dB) already exceeds vanilla 1.5M (28.72~dB), showing the largest value under tight capacity.
 
 \paragraph{Schedule and normalization sensitivity}
-In the controlled sweep, $T{=}500$, a 3K warmup, and robust quantiles perform best; the supplementary material reports every setting. These matched sensitivity values are distinct from the release-verification aggregate in Table~\ref{tab:main-result}.
+The supplementary material reports every schedule and normalization setting. Nearby alternatives can shift individual metrics slightly, while the released model uses one fixed default across all scenes.
 
 %% ---------------------------------------------------------------------------
 %% SfM Runtime Comparison
