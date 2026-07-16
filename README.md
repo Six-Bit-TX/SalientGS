@@ -4,7 +4,7 @@ SalientGS is an end-to-end pipeline for reconstructing 3D Gaussian Splatting (3D
 
 Project page: <https://six-bit-tx.github.io/SalientGS/>
 
-Paper: [`paper/main.pdf`](paper/main.pdf) · Supplementary: [`paper/supplementary.pdf`](paper/supplementary.pdf)
+Paper: [arXiv](https://arxiv.org/abs/2607.11285) · [`paper/main.pdf`](paper/main.pdf) · Supplementary: [`paper/supplementary.pdf`](paper/supplementary.pdf)
 
 ## Highlights
 
@@ -109,6 +109,15 @@ isolated training diagnostic using the reference sparse model, add
 The paper reports a 1.5M Gaussian budget, 30K joint-training iterations, Fisher Vector retrieval with 64 GMM components and top-20 neighbors, robust score quantiles `(0.05, 0.90)`, an importance threshold of 5, redundancy threshold of 0.9, opacity mixing of 0.05, and 10 views per score update. Scores begin after a 3K pose warmup and are recomputed every 500 iterations.
 
 Datasets, pretrained weights, and generated experiment outputs are not included in this repository. Please follow the licenses and terms of the respective datasets and third-party dependencies.
+
+## Acknowledgements
+
+We thank the authors and maintainers of [FastMap](https://jiahao.ai/fastmap),
+[gsplat](https://github.com/nerfstudio-project/gsplat),
+[COLMAP](https://github.com/colmap/colmap), and
+[InstantSfM](https://arxiv.org/abs/2510.13310) for making their research
+and implementations publicly available. Their work provided valuable
+foundations and reference implementations for this project.
 
 ## License
 
